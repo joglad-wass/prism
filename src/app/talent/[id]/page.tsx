@@ -108,7 +108,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
   }
 
   const handleExternalLink = (type: 'salesforce' | 'workday') => {
-    const id = type === 'salesforce' ? talent.salesforceId : talent.workdayId
+    const id = type === 'salesforce' ? (talent.Id || talent.salesforceId) : (talent.Workday_ID__c || talent.workdayId)
     if (id) {
       // In a real app, these would be proper external URLs
       console.log(`Opening ${type} with ID: ${id}`)
@@ -130,7 +130,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
             Back
           </Button>
           <div className="flex items-center gap-2">
-            {talent.salesforceId && (
+            {(talent.Id || talent.salesforceId) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -140,7 +140,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                 Salesforce
               </Button>
             )}
-            {talent.workdayId && (
+            {(talent.Workday_ID__c || talent.workdayId) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -156,34 +156,41 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight gap-2">{talent.name}</h1>
+              <h1 className="text-3xl font-bold tracking-tight gap-2">{talent.Name}</h1>
               <p className="text-muted-foreground flex items-center h-8">
-                <Badge variant={talent.status?.toLowerCase() === 'active' ? 'default' : 'secondary'}>
-                  {talent.status || 'Unknown'}
+                <Badge variant={(talent.Status__c || talent.status)?.toLowerCase() === 'active' ? 'default' : 'secondary'}>
+                  {talent.Status__c || talent.status || 'Unknown'}
                 </Badge>
               </p>
-              {talent.sport && (
+              {(talent.Sport__c || talent.CSM_Sport__c || talent.sport) && (
                 <p className="text-muted-foreground flex items-center gap-2">
-                  {talent.sport}
+                  {talent.Sport__c || talent.CSM_Sport__c || talent.sport}
                 </p>
               )}
-              {talent.team && (
+              {(talent.Team__c || talent.team) && (
                 <p className="text-muted-foreground flex items-center gap-2">
-                  {talent.team}
+                  {talent.Team__c || talent.team}
                 </p>
               )}
-              {talent.location && (
+              {(talent.City__c || talent.location) && (
                 <p className="text-muted-foreground flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
-                  {talent.location}
+                  {talent.City__c || talent.location}
                 </p>
               )}
               {/* Social Media Icons */}
-              {talent.contacts?.[0] && (
+              {((talent.Instagram__c || talent.contacts?.[0]?.instagram) ||
+                (talent.X_Twitter__c || talent.contacts?.[0]?.twitter) ||
+                (talent.Facebook__c || talent.contacts?.[0]?.facebook) ||
+                (talent.YouTube__c || talent.contacts?.[0]?.youtube) ||
+                talent.contacts?.[0]?.tiktok ||
+                talent.contacts?.[0]?.twitch ||
+                talent.contacts?.[0]?.spotify ||
+                talent.contacts?.[0]?.soundcloud) && (
                 <div className="flex items-center gap-2 mt-2">
-                  {talent.contacts[0].instagram && (
+                  {(talent.Instagram__c || talent.contacts?.[0]?.instagram) && (
                     <a
-                      href={`https://instagram.com/${talent.contacts[0].instagram.replace('@', '')}`}
+                      href={`https://instagram.com/${(talent.Instagram__c || talent.contacts?.[0]?.instagram || '').replace('@', '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:opacity-80 transition-opacity"
@@ -194,32 +201,30 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                         width={32}
                         height={32}
                         className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        // style={{ imageRendering: '-webkit-optimize-contrast' }}
                         unoptimized
                       />
                     </a>
                   )}
-                  {talent.contacts[0].twitter && (
+                  {(talent.X_Twitter__c || talent.contacts?.[0]?.twitter) && (
                     <a
-                      href={`https://twitter.com/${talent.contacts[0].twitter.replace('@', '')}`}
+                      href={`https://twitter.com/${(talent.X_Twitter__c || talent.contacts?.[0]?.twitter || '').replace('@', '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-gray-900 dark:text-gray-100 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                     >
                       <Image
                         src="/twitter.png"
-                        alt="Instagram"
+                        alt="Twitter/X"
                         width={32}
                         height={32}
                         className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        // style={{ imageRendering: '-webkit-optimize-contrast' }}
                         unoptimized
                       />
                     </a>
                   )}
-                  {talent.contacts[0].facebook && (
+                  {(talent.Facebook__c || talent.contacts?.[0]?.facebook) && (
                     <a
-                      href={`https://facebook.com/${talent.contacts[0].facebook}`}
+                      href={`https://facebook.com/${talent.Facebook__c || talent.contacts?.[0]?.facebook}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:opacity-80 transition-opacity"
@@ -230,14 +235,15 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                         width={32}
                         height={32}
                         className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        // style={{ imageRendering: '-webkit-optimize-contrast' }}
                         unoptimized
                       />
                     </a>
                   )}
-                  {talent.contacts[0].youtube && (
+                  {(talent.YouTube__c || talent.contacts?.[0]?.youtube) && (
                     <a
-                      href={talent.contacts[0].youtube.startsWith('http') ? talent.contacts[0].youtube : `https://youtube.com/c/${talent.contacts[0].youtube}`}
+                      href={(talent.YouTube__c || talent.contacts?.[0]?.youtube)?.startsWith('http')
+                        ? (talent.YouTube__c || talent.contacts?.[0]?.youtube || '')
+                        : `https://youtube.com/c/${talent.YouTube__c || talent.contacts?.[0]?.youtube}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:opacity-80 transition-opacity"
@@ -248,12 +254,11 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                         width={32}
                         height={32}
                         className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        // style={{ imageRendering: '-webkit-optimize-contrast' }}
                         unoptimized
                       />
                     </a>
                   )}
-                  {talent.contacts[0].tiktok && (
+                  {talent.contacts?.[0]?.tiktok && (
                     <a
                       href={talent.contacts[0].tiktok.startsWith('http') ? talent.contacts[0].tiktok : `https://tiktok.com/@${talent.contacts[0].tiktok.replace('@', '')}`}
                       target="_blank"
@@ -266,12 +271,11 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                         width={32}
                         height={32}
                         className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        // style={{ imageRendering: '-webkit-optimize-contrast' }}
                         unoptimized
                       />
                     </a>
                   )}
-                  {talent.contacts[0].twitch && (
+                  {talent.contacts?.[0]?.twitch && (
                     <a
                       href={talent.contacts[0].twitch.startsWith('http') ? talent.contacts[0].twitch : `https://twitch.tv/${talent.contacts[0].twitch}`}
                       target="_blank"
@@ -284,12 +288,11 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                         width={32}
                         height={32}
                         className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        // style={{ imageRendering: '-webkit-optimize-contrast' }}
                         unoptimized
                       />
                     </a>
                   )}
-                  {talent.contacts[0].spotify && (
+                  {talent.contacts?.[0]?.spotify && (
                     <a
                       href={talent.contacts[0].spotify.startsWith('http') ? talent.contacts[0].spotify : `https://open.spotify.com/artist/${talent.contacts[0].spotify}`}
                       target="_blank"
@@ -302,12 +305,11 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                         width={32}
                         height={32}
                         className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        // style={{ imageRendering: '-webkit-optimize-contrast' }}
                         unoptimized
                       />
                     </a>
                   )}
-                  {talent.contacts[0].soundcloud && (
+                  {talent.contacts?.[0]?.soundcloud && (
                     <a
                       href={talent.contacts[0].soundcloud.startsWith('http') ? talent.contacts[0].soundcloud : `https://soundcloud.com/${talent.contacts[0].soundcloud}`}
                       target="_blank"
@@ -320,7 +322,6 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                         width={32}
                         height={32}
                         className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        // style={{ imageRendering: '-webkit-optimize-contrast' }}
                         unoptimized
                       />
                     </a>

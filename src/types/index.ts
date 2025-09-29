@@ -1,12 +1,167 @@
 // Core API Types based on backend schema
 
 export interface TalentClient {
+  // Core System Fields
   id: string
   createdAt: string
   updatedAt: string
 
-  // Basic Information
-  name: string
+  // Salesforce System Fields
+  attributes_type?: string
+  attributes_url?: string
+  Id?: string
+  IsDeleted?: boolean
+  MasterRecordId?: string
+  Name: string
+  ParentId?: string
+  BillingAddress?: any
+  BillingCity?: string
+  BillingCountry?: string
+  BillingCountryCode?: string
+  BillingGeocodeAccuracy?: string
+  BillingLatitude?: number
+  BillingLongitude?: number
+  BillingPostalCode?: string
+  BillingState?: string
+  BillingStateCode?: string
+  BillingStreet?: string
+  ShippingAddress?: any
+  ShippingCity?: string
+  ShippingCountry?: string
+  ShippingCountryCode?: string
+  ShippingGeocodeAccuracy?: string
+  ShippingLatitude?: number
+  ShippingLongitude?: number
+  ShippingPostalCode?: string
+  ShippingState?: string
+  ShippingStateCode?: string
+  ShippingStreet?: string
+  Phone?: string
+  Fax?: string
+  AccountNumber?: string
+  Website?: string
+  PhotoUrl?: string
+  Sic?: string
+  Industry?: string
+  AnnualRevenue?: number
+  NumberOfEmployees?: number
+  Ownership?: string
+  TickerSymbol?: string
+  Description?: string
+  Rating?: string
+  Site?: string
+  OwnerId?: string
+  CreatedDate?: string
+  CreatedById?: string
+  LastModifiedDate?: string
+  LastModifiedById?: string
+  SystemModstamp?: string
+  LastActivityDate?: string
+  LastViewedDate?: string
+  LastReferencedDate?: string
+  IsPersonAccount?: boolean
+  PersonContactId?: string
+  PersonMailingAddress?: any
+  PersonMailingCity?: string
+  PersonMailingCountry?: string
+  PersonMailingCountryCode?: string
+  PersonMailingGeocodeAccuracy?: string
+  PersonMailingLatitude?: number
+  PersonMailingLongitude?: number
+  PersonMailingPostalCode?: string
+  PersonMailingState?: string
+  PersonMailingStateCode?: string
+  PersonMailingStreet?: string
+  PersonOtherAddress?: any
+  PersonOtherCity?: string
+  PersonOtherCountry?: string
+  PersonOtherCountryCode?: string
+  PersonOtherGeocodeAccuracy?: string
+  PersonOtherLatitude?: number
+  PersonOtherLongitude?: number
+  PersonOtherPostalCode?: string
+  PersonOtherState?: string
+  PersonOtherStateCode?: string
+  PersonOtherStreet?: string
+  PersonOtherPhone?: string
+  PersonMobilePhone?: string
+  PersonHomePhone?: string
+  PersonEmail?: string
+  PersonTitle?: string
+  PersonDepartment?: string
+  PersonAssistantName?: string
+  PersonAssistantPhone?: string
+  PersonLeadSource?: string
+  PersonBirthdate?: string
+  PersonHasOptedOutOfEmail?: boolean
+  PersonHasOptedOutOfFax?: boolean
+  PersonDoNotCall?: boolean
+  PersonLastCURequestDate?: string
+  PersonLastCUUpdateDate?: string
+  PersonEmailBouncedReason?: string
+  PersonEmailBouncedDate?: string
+  PersonGenderIdentity?: string
+  PersonPronouns?: string
+  PersonIndividualId?: string
+  Jigsaw?: string
+  JigsawCompanyId?: string
+  AccountSource?: string
+  SicDesc?: string
+
+  // Person Account Name Fields
+  Salutation?: string
+  FirstName?: string
+  LastName?: string
+  MiddleName?: string
+  Suffix?: string
+
+  // Key Custom Salesforce Fields (sampling the most important ones)
+  Academic_Calendar_Link__c?: string
+  Academic_Organization__pc?: boolean
+  AccountId__c?: string
+  Account_Status__c?: string
+  Active_Talent_Client__c?: boolean
+  Agent_Cost_Center__c?: string
+  Agent_Emails__c?: string
+  Agent_Workday_Company__c?: string
+  Cost_Center__c?: string
+
+  // Social Media Fields
+  Instagram__c?: string
+  X_Twitter__c?: string
+  Facebook__c?: string
+  TikTok__c?: string
+  YouTube__c?: string
+  Spotify__c?: string
+  Soundcloud__c?: string
+
+  // Marketing and Performance Fields
+  Marketing_Fee_Percentage__c?: number
+  NIL__c?: boolean
+  Women__c?: boolean
+  Sports_Category__c?: string
+  Sport__c?: string
+  Team__c?: string
+  Client_Status__c?: string
+  Client_Department__c?: string
+  Retainer_Status__c?: string
+  Retired__c?: boolean
+
+  // Workday Integration Fields
+  WD_CustomerID__c?: string
+  Ultimate_Parent_WD_Customer_ID__c?: string
+
+  // Financial Tracking Fields
+  Current_Year_Budget__c?: number
+  Current_Year_Forecasted_Amount__c?: number
+  CY_Budget__c?: number
+  CY_Contracted__c?: number
+  Prior_Year_Revenue__c?: number
+  Total_Budget__c?: number
+  Total_Won__c?: number
+
+  // Legacy compatibility fields (for existing frontend code)
+  name?: string
   firstName?: string
   lastName?: string
   status: string
@@ -14,19 +169,13 @@ export interface TalentClient {
   isNil: boolean
   isWomen: boolean
   isRetired: boolean
-
-  // Professional Information
   sport?: string
   team?: string
   costCenter?: string
   location?: string
-
-  // Dates
   firstSignedDate?: string
   firstDealDate?: string
   lastDealDate?: string
-
-  // External Links
   salesforceId?: string
   workdayId?: string
 

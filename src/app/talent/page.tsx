@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '../../components/layout/app-layout'
 import { Button } from '../../components/ui/button'
@@ -39,6 +39,7 @@ export default function TalentsPage() {
   const [filters, setFilters] = useState<Omit<TalentFilters, 'page' | 'limit'>>({})
   const [selectedTalent, setSelectedTalent] = useState<TalentQuickViewData | null>(null)
   const [quickViewOpen, setQuickViewOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
 
   const {
     data,
@@ -69,9 +70,21 @@ export default function TalentsPage() {
     }
   }, [data])
 
-  const handleSearchChange = (value: string) => {
-    setFilters({ ...filters, search: value || undefined })
-  }
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchValue(value)
+  }, [])
+
+  // Debounce search to avoid excessive API calls
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setFilters(prev => ({
+        ...prev,
+        search: searchValue.trim() || undefined
+      }))
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [searchValue])
 
   const handleStatusChange = (value: string) => {
     setFilters({
@@ -90,7 +103,7 @@ export default function TalentsPage() {
 
   interface Talent {
     id: string
-    name: string
+    Name: string
     agent?: { name: string }
     agents?: {
       isPrimary: boolean
@@ -115,7 +128,7 @@ export default function TalentsPage() {
   const handleTalentClick = (talent: Talent) => {
     const quickViewData: TalentQuickViewData = {
       id: talent.id,
-      name: talent.name,
+      name: talent.Name,
       agents: talent.agents || null,
       costCenter: talent.costCenter,
       sport: talent.sport,
@@ -251,6 +264,7 @@ export default function TalentsPage() {
                   <Input
                     placeholder="Search talents..."
                     className="pl-8"
+                    value={searchValue}
                     onChange={(e) => handleSearchChange(e.target.value)}
                   />
                 </div>
@@ -342,7 +356,7 @@ export default function TalentsPage() {
                       >
                         <TableCell className="font-medium">
                           <div>
-                            <div className="font-medium">{talent.name}</div>
+                            <div className="font-medium">{talent.Name}</div>
                             {/* {talent.location && (
                               <div className="text-sm text-muted-foreground">
                                 {talent.location}

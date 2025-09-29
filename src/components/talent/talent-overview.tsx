@@ -123,37 +123,63 @@ export function TalentOverview({ talent }: TalentOverviewProps) {
             <span className="text-sm">{formatAgentsDisplay()}</span>
           </div>
 
-          {talent.costCenter && (
+          {(talent.Cost_Center__c || talent.costCenter) && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Cost Center</span>
-              <span className="text-sm">{talent.costCenter}</span>
+              <span className="text-sm">{talent.Cost_Center__c || talent.costCenter}</span>
             </div>
           )}
 
-          {talent.sport && (
+          {(talent.Sport__c || talent.CSM_Sport__c || talent.sport) && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Sport</span>
               <div className="flex items-center gap-1">
-                {/* <Trophy className="h-3 w-3 text-muted-foreground" /> */}
-                <span className="text-sm">{talent.sport}</span>
+                <span className="text-sm">{talent.Sport__c || talent.CSM_Sport__c || talent.sport}</span>
               </div>
             </div>
           )}
 
-          {talent.category && (
+          {talent.Sub_Sport__c && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Sub Sport</span>
+              <span className="text-sm">{talent.Sub_Sport__c}</span>
+            </div>
+          )}
+
+          {(talent.Client_Category__c || talent.category) && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Category</span>
               <div className="flex items-center gap-1">
-                {/* <Trophy className="h-3 w-3 text-muted-foreground" /> */}
-                <span className="text-sm">{talent.category}</span>
+                <span className="text-sm">{talent.Client_Category__c || talent.category}</span>
               </div>
             </div>
           )}
 
-          {talent.team && (
+          {(talent.Team__c || talent.team) && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Team</span>
-              <span className="text-sm">{talent.team}</span>
+              <span className="text-sm">{talent.Team__c || talent.team}</span>
+            </div>
+          )}
+
+          {(talent.Agency__c || talent.Agency__pc) && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Agency</span>
+              <span className="text-sm">{talent.Agency__c || talent.Agency__pc}</span>
+            </div>
+          )}
+
+          {talent.Account_Type__c && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Account Type</span>
+              <Badge variant="outline">{talent.Account_Type__c}</Badge>
+            </div>
+          )}
+
+          {talent.Exclusive__c && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Exclusive</span>
+              <Badge variant="default">Exclusive</Badge>
             </div>
           )}
         </CardContent>
@@ -192,7 +218,7 @@ export function TalentOverview({ talent }: TalentOverviewProps) {
           <div className="mt-4 p-3 bg-muted rounded-lg">
             <div className="text-xs text-muted-foreground mb-1">Commission Rate</div>
             <div className="text-sm font-medium">
-              {talent.marketingFeePercentage ? `${talent.marketingFeePercentage}%` : 'Not set'}
+              {(talent.Marketing_Fee_Percentage__c || talent.marketingFeePercentage) ? `${talent.Marketing_Fee_Percentage__c || talent.marketingFeePercentage}%` : 'Not set'}
             </div>
           </div>
         </CardContent>
