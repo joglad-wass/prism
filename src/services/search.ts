@@ -57,9 +57,9 @@ export class SearchService {
         results.push({
           id: deal.id,
           type: 'deal',
-          title: deal.name,
+          title: deal.Name,
           subtitle: deal.brand?.name || 'Deal',
-          category: deal.status,
+          category: deal.Status__c,
         })
       })
     }
@@ -120,9 +120,9 @@ export class SearchService {
           results.push({
             id: deal.id,
             type: 'deal',
-            title: deal.name,
+            title: deal.Name,
             subtitle: deal.brand?.name || 'Deal',
-            category: deal.status,
+            category: deal.Status__c,
           })
         })
       }

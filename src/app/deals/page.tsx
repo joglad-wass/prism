@@ -92,11 +92,11 @@ export default function DealsPage() {
 
   // Pipeline stats
   const pipelineStats = dealsResponse?.data.reduce((acc, deal) => {
-    acc.total += deal.amount || 0
+    acc.total += deal.Amount || 0
     acc.count++
-    if (deal.stage === 'CLOSED_WON') acc.won += deal.amount || 0
-    if (deal.stage === 'NEGOTIATION') acc.negotiating += deal.amount || 0
-    if (deal.stage === 'PROPOSAL') acc.proposal += deal.amount || 0
+    if (deal.StageName === 'CLOSED_WON') acc.won += deal.Amount || 0
+    if (deal.StageName === 'NEGOTIATION') acc.negotiating += deal.Amount || 0
+    if (deal.StageName === 'PROPOSAL') acc.proposal += deal.Amount || 0
     return acc
   }, { total: 0, count: 0, won: 0, negotiating: 0, proposal: 0 }) ||
   { total: 0, count: 0, won: 0, negotiating: 0, proposal: 0 }
@@ -314,7 +314,7 @@ export default function DealsPage() {
                       >
                         <TableCell className="font-medium">
                           <div>
-                            <div className="font-medium">{deal.name}</div>
+                            <div className="font-medium">{deal.Name}</div>
                             {deal.division && (
                               <div className="text-sm text-muted-foreground">
                                 {deal.division}
@@ -338,17 +338,17 @@ export default function DealsPage() {
                           </div>
                         </TableCell>
                         {/* <TableCell>
-                          <Badge variant={getStatusVariant(deal.status)}>
-                            {deal.status}
+                          <Badge variant={getStatusVariant(deal.Status__c)}>
+                            {deal.Status__c}
                           </Badge>
                         </TableCell> */}
                         <TableCell>
-                          <Badge variant={getStageVariant(deal.stage)}>
-                            {deal.stage}
+                          <Badge variant={getStageVariant(deal.StageName)}>
+                            {deal.StageName}
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatCurrency(deal.amount)}
+                          {formatCurrency(deal.Amount)}
                         </TableCell>
                         <TableCell className="font-medium">
                           {formatCurrency(deal.Contract_Amount__c)}

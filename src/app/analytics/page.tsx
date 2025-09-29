@@ -30,7 +30,7 @@ import {
 export default function AnalyticsPage() {
   const { data: talentsResponse } = useTalents({ limit: 1000 })
   const { data: brandsResponse } = useBrands({ limit: 1000 })
-  const { data: agentsResponse } = useAgents({ limit: 1000 })
+  const { data: agentsResponse } = useAgents({ hasDeals: true, limit: 100 })
   const { data: dealsResponse } = useDeals({ limit: 1000 })
 
   // Calculate analytics
@@ -72,25 +72,39 @@ export default function AnalyticsPage() {
 
   // Deal Analytics
   const dealsByStage = deals.reduce((acc, deal) => {
-    acc[deal.stage] = (acc[deal.stage] || 0) + 1
+    acc[deal.StageName] = (acc[deal.StageName] || 0) + 1
     return acc
   }, {} as Record<string, number>)
 
   const dealsByStatus = deals.reduce((acc, deal) => {
-    acc[deal.status] = (acc[deal.status] || 0) + 1
+    acc[deal.Status__c] = (acc[deal.Status__c] || 0) + 1
     return acc
   }, {} as Record<string, number>)
 
-  const totalDealValue = deals.reduce((acc, deal) => acc + (deal.amount || 0), 0)
+  const totalDealValue = deals.reduce((acc, deal) => acc + (deal.Amount || 0), 0)
   const avgDealSize = deals.length > 0 ? totalDealValue / deals.length : 0
 
   // Agent Performance
-  const agentPerformance = agents.map(agent => ({
-    ...agent,
-    clientCount: agent.clients?.length || 0,
-    dealCount: agent.deals?.length || 0,
-    brandCount: agent.ownedBrands?.length || 0,
-  })).sort((a, b) => b.clientCount - a.clientCount)
+  const agentPerformance = agents.map(agent => {
+    const clientCount = agent.clients?.length || 0
+    const dealCount = agent.deals?.length || 0
+    const brandCount = agent.ownedBrands?.length || 0
+    const totalDealRevenue = agent.deals?.reduce((sum, deal) => {
+      const amount = Number(deal.Amount || deal.Contract_Amount__c || 0)
+      return sum + amount
+    }, 0) || 0
+
+
+    return {
+      ...agent,
+      clientCount,
+      dealCount,
+      brandCount,
+      totalDealRevenue
+    }
+  })
+  // No need to filter since hasDeals=true already filters on the backend
+  .sort((a, b) => b.totalDealRevenue - a.totalDealRevenue)
 
   const topPerformingAgents = agentPerformance.slice(0, 5)
 
@@ -336,7 +350,7 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Top Performing Agents</CardTitle>
-            <CardDescription>Agents ranked by client portfolio size</CardDescription>
+            <CardDescription>Agents ranked by deal revenue (only agents with deals)</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -353,16 +367,16 @@ export default function AnalyticsPage() {
                   </div>
                   <div className="flex items-center space-x-6">
                     <div className="text-center">
-                      <p className="text-sm font-medium">{agent.clientCount}</p>
-                      <p className="text-xs text-muted-foreground">Clients</p>
+                      <p className="text-sm font-medium">{formatCurrency(agent.totalDealRevenue)}</p>
+                      <p className="text-xs text-muted-foreground">Revenue</p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-medium">{agent.dealCount}</p>
                       <p className="text-xs text-muted-foreground">Deals</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-medium">{agent.brandCount}</p>
-                      <p className="text-xs text-muted-foreground">Brands</p>
+                      <p className="text-sm font-medium">{agent.clientCount}</p>
+                      <p className="text-xs text-muted-foreground">Clients</p>
                     </div>
                   </div>
                 </div>

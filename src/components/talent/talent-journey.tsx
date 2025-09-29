@@ -120,7 +120,7 @@ export function TalentJourney({ talent }: TalentJourneyProps) {
     // Find the first deal with status indicating it was won/completed
     const wonDeals = talent.deals
       .filter(dealClient => {
-        const status = dealClient.deal.status?.toLowerCase()
+        const status = dealClient.deal.Status__c?.toLowerCase()
         return status === 'completed' || status === 'active' || status === 'closed_won'
       })
       .sort((a, b) => {

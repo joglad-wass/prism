@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import {
@@ -21,13 +20,12 @@ import {
   Clock,
   Percent
 } from 'lucide-react'
-import { useTheme } from '@/contexts/theme-context'
 
 export interface DealQuickViewData {
   id: string
-  name: string
-  status: string
-  stage: string
+  Name: string
+  Status__c: string
+  StageName: string
   amount?: number
   Contract_Amount__c?: number
   Talent_Marketing_Fee_Percentage__c?: number
@@ -59,13 +57,6 @@ interface DealQuickViewProps {
 
 export function DealQuickView({ deal, open, onOpenChange, onViewDetails }: DealQuickViewProps) {
   if (!deal) return null
-
-  const { theme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   const getStageVariant = (stage: string) => {
     switch (stage) {
@@ -107,15 +98,15 @@ export function DealQuickView({ deal, open, onOpenChange, onViewDetails }: DealQ
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Briefcase className="h-5 w-5" />
-            {deal.name}
+            {deal.Name}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Status and Stage */}
           <div className="flex items-center justify-between">
-            <Badge variant={getStageVariant(deal.stage)}>
-              {deal.stage}
+            <Badge variant={getStageVariant(deal.StageName)}>
+              {deal.StageName}
             </Badge>
             {deal.Account_Industry__c && (
               <span className="text-xs text-muted-foreground">
@@ -135,7 +126,7 @@ export function DealQuickView({ deal, open, onOpenChange, onViewDetails }: DealQ
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Deal Amount</span>
               </div>
-              <span className="text-sm font-semibold">{formatCurrency(deal.amount)}</span>
+              <span className="text-sm font-semibold">{formatCurrency(deal.Amount)}</span>
             </div>
 
             <div className="flex items-center justify-between">

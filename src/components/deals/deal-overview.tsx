@@ -42,8 +42,8 @@ export function DealOverview({ deal }: DealOverviewProps) {
   }
 
   const calculateCommission = () => {
-    if (deal.amount && deal.dealPercent) {
-      return deal.amount * (deal.dealPercent / 100)
+    if (deal.Amount && deal.dealPercent) {
+      return deal.Amount * (deal.dealPercent / 100)
     }
     return deal.commission || 0
   }
@@ -69,12 +69,12 @@ export function DealOverview({ deal }: DealOverviewProps) {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Status</span>
-                <Badge variant="outline">{deal.status}</Badge>
+                <Badge variant="outline">{deal.Status__c}</Badge>
               </div>
 
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Stage</span>
-                <Badge variant="secondary">{deal.stage}</Badge>
+                <Badge variant="secondary">{deal.StageName}</Badge>
               </div>
 
               {deal.division && (
@@ -201,7 +201,7 @@ export function DealOverview({ deal }: DealOverviewProps) {
                 <span className="text-sm font-medium">Deal Amount</span>
               </div>
               <div className="text-2xl font-bold">
-                {formatCurrency(deal.amount)}
+                {formatCurrency(deal.Amount)}
               </div>
               {deal.splitPercent && (
                 <div className="text-xs text-muted-foreground">

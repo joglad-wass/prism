@@ -11,6 +11,7 @@ import { DealTimeline } from '../../../components/deals/deal-timeline'
 import { DealProducts } from '../../../components/deals/deal-products'
 import { DealSchedules } from '../../../components/deals/deal-schedules'
 import { DealNotes } from '../../../components/deals/deal-notes'
+import { DealPayments } from '../../../components/deals/deal-payments'
 import {
   ArrowLeft,
   ExternalLink,
@@ -176,11 +177,11 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
             <div>
               <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                 <Briefcase className="h-8 w-8" />
-                {deal.name}
+                {deal.Name}
               </h1>
               <div className="flex items-center gap-3 mt-2">
-                <Badge variant={getStageVariant(deal.stage)}>
-                  {deal.stage}
+                <Badge variant={getStageVariant(deal.StageName)}>
+                  {deal.StageName}
                 </Badge>
                 {deal.division && (
                   <span className="text-sm text-muted-foreground">
@@ -189,9 +190,9 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
                 )}
               </div>
               <div className="flex items-center gap-4 mt-3">
-                {deal.amount && (
+                {deal.Amount && (
                   <div className="text-lg font-semibold">
-                    {formatCurrency(deal.amount)}
+                    {formatCurrency(deal.Amount)}
                   </div>
                 )}
                 {deal.closeDate && (
@@ -212,6 +213,7 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="schedules">Schedules</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
           </TabsList>
 
@@ -229,6 +231,10 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
 
           <TabsContent value="schedules">
             <DealSchedules deal={deal} />
+          </TabsContent>
+
+          <TabsContent value="payments">
+            <DealPayments deal={deal} />
           </TabsContent>
 
           <TabsContent value="notes">

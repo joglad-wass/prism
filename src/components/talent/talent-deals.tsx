@@ -68,20 +68,20 @@ export function TalentDeals({ talent }: TalentDealsProps) {
   // Use real deals data from the talent
   const deals = talent.deals?.map(dc => ({
     id: dc.deal.id,
-    name: dc.deal.name,
+    name: dc.deal.Name,
     brand: dc.deal.brand?.name || 'Unknown Brand',
     company: dc.deal.brand?.name || 'Unknown Company',
-    amount: Number(dc.deal.amount) || 0,
-    split: (Number(dc.deal.amount) * (Number(dc.splitPercent) || splitPercentage)) / 100 || 0,
+    amount: Number(dc.deal.Amount) || 0,
+    split: (Number(dc.deal.Amount) * (Number(dc.splitPercent) || splitPercentage)) / 100 || 0,
     splitPercent: Number(dc.splitPercent) || splitPercentage,
-    status: dc.deal.status,
+    status: dc.deal.Status__c,
     startDate: dc.deal.startDate || new Date().toISOString(),
     closeDate: dc.deal.closeDate || new Date().toISOString(),
     schedules: dc.deal.schedules || [],
     owner: talent.agents?.find(ta => ta.isPrimary)?.agent?.name || talent.agents?.[0]?.agent?.name || 'Unknown Owner',
     stage: 'Active',
     daysInStage: 0,
-    commission: (Number(dc.deal.amount) * (Number(dc.splitPercent) || splitPercentage)) / 100 * 0.15,
+    commission: (Number(dc.deal.Amount) * (Number(dc.splitPercent) || splitPercentage)) / 100 * 0.15,
     workdayProject: null as string | null
   })) || []
 

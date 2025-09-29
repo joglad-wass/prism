@@ -16,14 +16,6 @@ import {
   DialogTrigger,
 } from '../ui/dialog'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../ui/table'
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -40,10 +32,13 @@ import {
   ExternalLink,
   Send,
   ChevronDown,
-  ChevronRight,
+  ChevronUp,
   Info,
   CreditCard,
   FileText,
+  Edit,
+  Save,
+  X,
 } from 'lucide-react'
 import { Deal, Schedule } from '../../types'
 import { useSchedulesByDeal } from '../../hooks/useSchedules'
@@ -55,6 +50,8 @@ interface DealSchedulesProps {
 export function DealSchedules({ deal }: DealSchedulesProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [expandedScheduleIds, setExpandedScheduleIds] = useState<Set<string>>(new Set())
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null)
+  const [editingSchedule, setEditingSchedule] = useState<Partial<Schedule>>({})
   const [newSchedule, setNewSchedule] = useState({
     description: '',
     Revenue: '',
@@ -86,33 +83,6 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
     })
   }
 
-  const getScheduleStatusVariant = (status: string) => {
-    switch (status) {
-      case 'SENT_TO_WORKDAY':
-        return 'default'
-      case 'APPROVED':
-        return 'secondary'
-      case 'PENDING':
-        return 'outline'
-      case 'DRAFT':
-        return 'outline'
-      default:
-        return 'secondary'
-    }
-  }
-
-  const getPaymentStatusVariant = (status: string) => {
-    switch (status) {
-      case 'PAID':
-        return 'default'
-      case 'PENDING':
-        return 'outline'
-      case 'OVERDUE':
-        return 'destructive'
-      default:
-        return 'secondary'
-    }
-  }
 
   const canSendToWorkday = (schedule: Schedule) => {
     if (!schedule.ScheduleDate) return false
@@ -137,9 +107,33 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
     })
   }
 
-  const handleSendToWorkday = (schedule: Schedule) => {
-    // Future: Implement Workday integration
-    console.log('Sending schedule to Workday:', schedule.id)
+  const handleCreateInvoice = (schedule: Schedule) => {
+    // Future: Implement invoice creation
+    console.log('Creating invoice for schedule:', schedule.id)
+  }
+
+  const handleEditSchedule = (schedule: Schedule) => {
+    setEditingScheduleId(schedule.id)
+    setEditingSchedule({
+      Description: schedule.Description,
+      Revenue: schedule.Revenue,
+      ScheduleDate: schedule.ScheduleDate,
+      Type: schedule.Type,
+      ScheduleSplitPercent: schedule.ScheduleSplitPercent,
+      Billable: schedule.Billable,
+    })
+  }
+
+  const handleSaveEdit = () => {
+    // Future: Implement schedule update API call
+    console.log('Saving schedule:', editingScheduleId, editingSchedule)
+    setEditingScheduleId(null)
+    setEditingSchedule({})
+  }
+
+  const handleCancelEdit = () => {
+    setEditingScheduleId(null)
+    setEditingSchedule({})
   }
 
   const toggleScheduleExpansion = (scheduleId: string) => {
@@ -152,104 +146,32 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
     setExpandedScheduleIds(newExpanded)
   }
 
-  const ScheduleDetailsRow = ({ schedule }: { schedule: Schedule }) => {
-    return (
-      <TableRow className="bg-muted/50">
-        <TableCell colSpan={6}>
-          <div className="p-4 space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {/* Basic Information */}
-              <div className="space-y-2">
-                <h4 className="font-medium flex items-center gap-2">
-                  <Info className="h-4 w-4" />
-                  Basic Information
-                </h4>
-                <div className="space-y-1 text-sm">
-                  {/* <div className="flex justify-between">
-                    <span className="text-muted-foreground">Schedule ID:</span>
-                    <span className="font-mono text-xs">{schedule.id.slice(0, 12)}...</span>
-                  </div> */}
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Type:</span>
-                    <span>{schedule.Type || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Split %:</span>
-                    <span>{schedule.ScheduleSplitPercent ? `${schedule.ScheduleSplitPercent}%` : '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Billable:</span>
-                    <span>{schedule.Billable !== undefined ? (schedule.Billable ? 'Yes' : 'No') : '-'}</span>
-                  </div>
-                </div>
-              </div>
+  const getScheduleStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'sent_to_workday':
+        return <Badge variant="default" className="bg-green-100 text-green-800">Sent to Workday</Badge>
+      case 'approved':
+        return <Badge variant="default">Approved</Badge>
+      case 'pending':
+        return <Badge variant="secondary">Pending</Badge>
+      case 'draft':
+        return <Badge variant="outline">Draft</Badge>
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
+  }
 
-              {/* Invoice Information */}
-              <div className="space-y-2">
-                <h4 className="font-medium flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Invoice Details
-                </h4>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Talent Amount:</span>
-                    <span>{formatCurrency(schedule.Talent_Invoice_Line_Amount__c)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Wasserman Amount:</span>
-                    <span>{formatCurrency(schedule.Wasserman_Invoice_Line_Amount__c)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Invoice ID:</span>
-                    <span className="">{(schedule.WD_Invoice_ID__c && schedule.WD_Invoice_ID__c !== '') ? schedule.WD_Invoice_ID__c : '-'}</span>
-                  </div>
-                  {/* <div className="flex justify-between">
-                    <span className="text-muted-foreground">WD Reference ID:</span>
-                    <span>{(schedule.WD_Invoice_Reference_ID__c && schedule.WD_Invoice_Reference_ID__c !== '') ? schedule.WD_Invoice_Reference_ID__c : 'N/A'}</span>
-                  </div> */}
-                </div>
-              </div>
-
-              {/* Payment Information */}
-              <div className="space-y-2">
-                <h4 className="font-medium flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Payment Details
-                </h4>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Payment Status:</span>
-                    <Badge variant={getPaymentStatusVariant((schedule.WD_Payment_Status__c && schedule.WD_Payment_Status__c !== '') ? schedule.WD_Payment_Status__c : 'PENDING')} className="text-xs">
-                      {(schedule.WD_Payment_Status__c && schedule.WD_Payment_Status__c !== '') ? schedule.WD_Payment_Status__c : 'PENDING'}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Payment Terms:</span>
-                    <span>{(schedule.WD_Payment_Term__c && schedule.WD_Payment_Term__c !== '') ? schedule.WD_Payment_Term__c : '-'}</span>
-                  </div>
-                  {schedule.paymentDate && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Payment Date:</span>
-                    <span>{formatDate(schedule.createdAt)}</span>
-                  </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Full Description */}
-            {/* {schedule.Description && (
-              <div className="space-y-2">
-                <h4 className="font-medium">Description</h4>
-                <p className="text-sm text-muted-foreground p-3 bg-background rounded border">
-                  {schedule.Description}
-                </p>
-              </div>
-            )} */}
-          </div>
-        </TableCell>
-      </TableRow>
-    )
+  const getPaymentStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'paid':
+        return <Badge variant="default" className="bg-green-100 text-green-800">Paid</Badge>
+      case 'pending':
+        return <Badge variant="secondary">Pending</Badge>
+      case 'overdue':
+        return <Badge variant="destructive">Overdue</Badge>
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
   }
 
   const schedules = schedulesResponse?.data || []
@@ -407,96 +329,221 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
               No schedules created yet
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Schedule Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {schedules.map((schedule) => {
-                    const isExpanded = expandedScheduleIds.has(schedule.id)
-                    return (
-                      <React.Fragment key={schedule.id}>
-                        <TableRow
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => toggleScheduleExpansion(schedule.id)}
-                        >
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {isExpanded ? (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                              )}
-                              <div className="space-y-1">
-                                <div className="font-medium">
-                                  {schedule.Description || 'Untitled Schedule'}
-                                </div>
-                              </div>
+            <div className="grid gap-4">
+              {schedules.map((schedule) => {
+                const isExpanded = expandedScheduleIds.has(schedule.id)
+                return (
+                  <Card key={schedule.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader
+                      className="cursor-pointer"
+                      onClick={() => toggleScheduleExpansion(schedule.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <Calendar className="h-5 w-5" />
+                            {schedule.Description || 'Untitled Schedule'}
+                          </CardTitle>
+                          <CardDescription className="flex items-center gap-2">
+                            {canSendToWorkday(schedule) && (
+                              <AlertCircle className="h-4 w-4 text-amber-500" />
+                            )}
+                            Due: {formatDate(schedule.ScheduleDate)}
+                          </CardDescription>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-orange-600">
+                              {formatCurrency(schedule.Revenue)}
                             </div>
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {formatCurrency(schedule.Revenue)}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {canSendToWorkday(schedule) && (
-                                <AlertCircle className="h-4 w-4 text-amber-500" />
-                              )}
-                              {formatDate(schedule.ScheduleDate)}
+                            <div className="flex gap-2 mt-1">
+                              {getScheduleStatusBadge(schedule.ScheduleStatus || schedule.scheduleStatus || 'DRAFT')}
+                              {getPaymentStatusBadge(schedule.WD_Payment_Status__c || schedule.paymentStatus || 'PENDING')}
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={getScheduleStatusVariant(schedule.ScheduleStatus || schedule.scheduleStatus || 'DRAFT')}>
-                              {schedule.ScheduleStatus || schedule.scheduleStatus || 'DRAFT'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={getPaymentStatusVariant(schedule.WD_Payment_Status__c || schedule.paymentStatus || 'PENDING')}>
-                              {schedule.WD_Payment_Status__c || schedule.paymentStatus || 'PENDING'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {canSendToWorkday(schedule) && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleSendToWorkday(schedule)
-                                  }}
-                                >
-                                  <Send className="h-3 w-3 mr-1" />
-                                  Send
-                                </Button>
-                              )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {canSendToWorkday(schedule) && (
                               <Button
                                 size="sm"
-                                variant="ghost"
+                                variant="outline"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  // Handle external link action
+                                  handleCreateInvoice(schedule)
                                 }}
                               >
-                                <ExternalLink className="h-3 w-3" />
+                                <FileText className="h-3 w-3 mr-1" />
+                                Create Invoice
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="sm">
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    {isExpanded && (
+                      <CardContent className="space-y-6">
+                        {/* Basic Information */}
+                        {editingScheduleId === schedule.id ? (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                              <div className="space-y-2">
+                                <Label className="text-sm text-muted-foreground">Description</Label>
+                                <Input
+                                  value={editingSchedule.Description || ''}
+                                  onChange={(e) => setEditingSchedule({ ...editingSchedule, Description: e.target.value })}
+                                  placeholder="Schedule description"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-sm text-muted-foreground">Amount</Label>
+                                <Input
+                                  type="number"
+                                  value={editingSchedule.Revenue || ''}
+                                  onChange={(e) => setEditingSchedule({ ...editingSchedule, Revenue: e.target.value })}
+                                  placeholder="0.00"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-sm text-muted-foreground">Schedule Date</Label>
+                                <Input
+                                  type="date"
+                                  value={editingSchedule.ScheduleDate || ''}
+                                  onChange={(e) => setEditingSchedule({ ...editingSchedule, ScheduleDate: e.target.value })}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-sm text-muted-foreground">Type</Label>
+                                <Input
+                                  value={editingSchedule.Type || ''}
+                                  onChange={(e) => setEditingSchedule({ ...editingSchedule, Type: e.target.value })}
+                                  placeholder="Schedule type"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-sm text-muted-foreground">Split %</Label>
+                                <Input
+                                  type="number"
+                                  value={editingSchedule.ScheduleSplitPercent || ''}
+                                  onChange={(e) => setEditingSchedule({ ...editingSchedule, ScheduleSplitPercent: e.target.value ? parseFloat(e.target.value) : undefined })}
+                                  placeholder="0"
+                                  min="0"
+                                  max="100"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-sm text-muted-foreground">Billable</Label>
+                                <Select
+                                  value={editingSchedule.Billable !== undefined ? (editingSchedule.Billable ? 'true' : 'false') : ''}
+                                  onValueChange={(value) => setEditingSchedule({ ...editingSchedule, Billable: value === 'true' })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select billable status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="true">Yes</SelectItem>
+                                    <SelectItem value="false">No</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleCancelEdit}
+                              >
+                                <X className="h-3 w-3 mr-1" />
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={handleSaveEdit}
+                              >
+                                <Save className="h-3 w-3 mr-1" />
+                                Save
                               </Button>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                        {isExpanded && <ScheduleDetailsRow schedule={schedule} />}
-                      </React.Fragment>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Type</p>
+                              <p className="font-medium">{schedule.Type || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Split %</p>
+                              <p className="font-medium">{schedule.ScheduleSplitPercent ? `${schedule.ScheduleSplitPercent}%` : '-'}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Billable</p>
+                              <p className="font-medium">{schedule.Billable !== undefined ? (schedule.Billable ? 'Yes' : 'No') : '-'}</p>
+                            </div>
+                            {schedule.WD_Invoice_Reference_ID__c && (
+                              <div>
+                                <p className="text-sm text-muted-foreground">Invoice Reference</p>
+                                <p className="font-medium text-xs">{schedule.WD_Invoice_Reference_ID__c}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Invoice Information */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
+                          <div>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <FileText className="h-3 w-3" />
+                              Talent Amount
+                            </p>
+                            <p className="font-medium">{formatCurrency(schedule.Talent_Invoice_Line_Amount__c)}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Wasserman Amount</p>
+                            <p className="font-medium">{formatCurrency(schedule.Wasserman_Invoice_Line_Amount__c)}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Invoice ID</p>
+                            <p className="font-medium text-xs">{(schedule.WD_Invoice_ID__c && schedule.WD_Invoice_ID__c !== '') ? schedule.WD_Invoice_ID__c : '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Payment Terms</p>
+                            <p className="font-medium">{(schedule.WD_Payment_Term__c && schedule.WD_Payment_Term__c !== '') ? schedule.WD_Payment_Term__c : '-'}</p>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        {editingScheduleId !== schedule.id && (
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditSchedule(schedule)}
+                            >
+                              <Edit className="h-3 w-3 mr-2" />
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                // Handle external link action
+                              }}
+                            >
+                              <ExternalLink className="h-3 w-3 mr-2" />
+                              View Details
+                            </Button>
+                          </div>
+                        )}
+                      </CardContent>
+                    )}
+                  </Card>
+                )
+              })}
             </div>
           )}
         </CardContent>
@@ -533,8 +580,8 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
             {schedules.filter(canSendToWorkday).length > 0 && (
               <div className="pt-2">
                 <Button variant="outline" className="w-full">
-                  <Send className="mr-2 h-4 w-4" />
-                  Send All Ready Schedules to Workday
+                  <FileText className="mr-2 h-4 w-4" />
+                  Create Invoices for All Ready Schedules
                 </Button>
               </div>
             )}

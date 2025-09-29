@@ -104,14 +104,14 @@ export interface Deal {
   updatedAt: string
 
   // Basic Information
-  name: string
-  status: string
-  stage: string
+  Name: string
+  Status__c: string
+  StageName: string
   startDate?: string
   closeDate?: string
 
   // Financial Information
-  amount?: number
+  Amount?: number
   splitPercent?: number
   dealPercent?: number
   commission?: number
@@ -379,6 +379,7 @@ export interface AgentFilters {
   company?: string
   division?: string
   search?: string
+  hasDeals?: boolean
   page?: number
   limit?: number
 }

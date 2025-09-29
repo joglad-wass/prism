@@ -7,10 +7,41 @@ import { Button } from '../components/ui/button'
 import { Users, Building2, Briefcase, DollarSign, TrendingUp, Plus } from 'lucide-react'
 import { useTalentStats } from '../hooks/useTalents'
 import { useBrandStats } from '../hooks/useBrands'
+import { useDeals } from '../hooks/useDeals'
+import { useAgents } from '../hooks/useAgents'
 
 export default function Home() {
   const { data: talentStats } = useTalentStats()
   const { data: brandStats } = useBrandStats()
+
+  // Fetch recent deals (limit to 3 for the card)
+  const { data: recentDeals } = useDeals({
+    limit: 3,
+    page: 1
+  })
+
+  // Fetch all deals for stats (first page with higher limit)
+  const { data: allDeals } = useDeals({
+    limit: 100,
+    page: 1
+  })
+
+  // Fetch top performing agents (only agents with deals)
+  const { data: topAgents } = useAgents({
+    hasDeals: true,
+    limit: 10,
+    page: 1
+  })
+
+  // Calculate deal stats
+  const activeDealsCount = allDeals?.data?.filter(deal =>
+    deal.Status__c !== 'Closed Lost' && deal.Status__c !== 'Closed Won' &&
+    !deal.StageName?.includes('Closed')
+  ).length || 0
+
+  const totalRevenue = allDeals?.data?.reduce((sum, deal) => {
+    return sum + (deal.Amount || deal.Contract_Amount__c || 0)
+  }, 0) || 0
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -62,7 +93,7 @@ export default function Home() {
               <Briefcase className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">89</div>
+              <div className="text-2xl font-bold">{activeDealsCount}</div>
               <p className="text-xs text-muted-foreground">
                 <span className="text-green-600">+15%</span> from last month
               </p>
@@ -75,7 +106,9 @@ export default function Home() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">$2.4M</div>
+              <div className="text-2xl font-bold">
+                {totalRevenue > 0 ? `$${(totalRevenue / 1000000).toFixed(1)}M` : '$0'}
+              </div>
               <p className="text-xs text-muted-foreground">
                 <span className="text-green-600">+20%</span> from last month
               </p>
@@ -91,36 +124,35 @@ export default function Home() {
               <CardDescription>Latest deal activity</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Nike Partnership</p>
-                  <p className="text-sm text-muted-foreground">LeBron James</p>
+              {recentDeals?.data?.map((deal) => (
+                <div key={deal.id} className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{deal.Name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {deal.brand?.name || deal.Account_Name__c || 'Unknown Brand'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">
+                      {deal.Amount || deal.Contract_Amount__c
+                        ? `$${((deal.Amount || deal.Contract_Amount__c)! / 1000000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`
+                        : 'N/A'
+                      }
+                    </p>
+                    <Badge variant={
+                      deal.Status__c === 'Won' || deal.StageName?.includes('Closed') ? 'default' :
+                      deal.Status__c === 'Negotiating' || deal.StageName?.includes('Negotiat') ? 'secondary' :
+                      'outline'
+                    }>
+                      {deal.StageName || deal.Status__c}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium">$850K</p>
-                  <Badge variant="default">Active</Badge>
+              )) || (
+                <div className="text-center text-muted-foreground py-4">
+                  Loading recent deals...
                 </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">MLB Sponsorship</p>
-                  <p className="text-sm text-muted-foreground">Mike Trout</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">$1.2M</p>
-                  <Badge variant="secondary">Negotiating</Badge>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Gaming Partnership</p>
-                  <p className="text-sm text-muted-foreground">Ninja</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">$300K</p>
-                  <Badge variant="outline">Completed</Badge>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -130,45 +162,44 @@ export default function Home() {
               <CardDescription>Agent performance this month</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Sarah Johnson</p>
-                  <p className="text-sm text-muted-foreground">45 active clients</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">$3.2M</p>
-                  <div className="flex items-center text-sm text-green-600">
-                    <TrendingUp className="mr-1 h-3 w-3" />
-                    +25%
+              {topAgents?.data
+                ?.map((agent) => {
+                  const clientCount = agent.clients?.length || 0
+                  const totalDeals = agent.deals?.reduce((sum, deal) => {
+                    const amount = Number(deal.Amount || deal.Contract_Amount__c || 0)
+                    return sum + amount
+                  }, 0) || 0
+                  const dealCount = agent.deals?.length || 0
+
+
+                  return { ...agent, clientCount, totalDeals, dealCount }
+                })
+                // No need to filter since hasDeals=true already filters on the backend
+                .sort((a, b) => b.totalDeals - a.totalDeals)
+                .slice(0, 3)
+                .map((agent) => (
+                  <div key={agent.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{agent.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {agent.clientCount} clients • {agent.dealCount} deals
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">
+                        {agent.totalDeals > 0 ? `$${(agent.totalDeals / 1000000).toFixed(1)}M` : '$0'}
+                      </p>
+                      <div className="flex items-center text-sm text-green-600">
+                        <TrendingUp className="mr-1 h-3 w-3" />
+                        {agent.division || 'N/A'}
+                      </div>
+                    </div>
                   </div>
+                )) || (
+                <div className="text-center text-muted-foreground py-4">
+                  Loading top agents...
                 </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Mike Chen</p>
-                  <p className="text-sm text-muted-foreground">32 active clients</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">$2.8M</p>
-                  <div className="flex items-center text-sm text-green-600">
-                    <TrendingUp className="mr-1 h-3 w-3" />
-                    +18%
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Amanda Davis</p>
-                  <p className="text-sm text-muted-foreground">28 active clients</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">$2.1M</p>
-                  <div className="flex items-center text-sm text-green-600">
-                    <TrendingUp className="mr-1 h-3 w-3" />
-                    +12%
-                  </div>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>

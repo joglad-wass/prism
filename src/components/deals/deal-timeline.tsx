@@ -95,9 +95,9 @@ export function DealTimeline({ deal }: DealTimelineProps) {
   ]
 
   // Find current stage order
-  const currentStageOrder = allStages.find(s => s.key === deal.stage)?.order || 0
-  const isClosedWon = deal.stage === 'CLOSED_WON'
-  const isClosedLost = deal.stage === 'CLOSED_LOST'
+  const currentStageOrder = allStages.find(s => s.key === deal.StageName)?.order || 0
+  const isClosedWon = deal.StageName === 'CLOSED_WON'
+  const isClosedLost = deal.StageName === 'CLOSED_LOST'
   const daysInCurrentStage = calculateDaysInStage()
 
   // Create timeline with stage information
@@ -105,7 +105,7 @@ export function DealTimeline({ deal }: DealTimelineProps) {
     .filter(stage => {
       // Show all stages up to current, plus closed states
       if (stage.key === 'CLOSED_WON' || stage.key === 'CLOSED_LOST') {
-        return stage.key === deal.stage
+        return stage.key === deal.StageName
       }
       return stage.order <= Math.max(currentStageOrder, 4)
     })
@@ -113,8 +113,8 @@ export function DealTimeline({ deal }: DealTimelineProps) {
       ...stage,
       isCurrent: stage.order === currentStageOrder,
       isCompleted: stage.order < currentStageOrder || (isClosedWon && stage.key !== 'CLOSED_LOST'),
-      date: stage.key === deal.stage ? deal.Stage_Last_Updated__c : undefined,
-      daysInStage: stage.key === deal.stage ? daysInCurrentStage : undefined,
+      date: stage.key === deal.StageName ? deal.Stage_Last_Updated__c : undefined,
+      daysInStage: stage.key === deal.StageName ? daysInCurrentStage : undefined,
     }))
 
   const getStageIcon = (stage: StageInfo) => {
@@ -158,10 +158,10 @@ export function DealTimeline({ deal }: DealTimelineProps) {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <Badge variant={getStageVariant(timeline.find(s => s.isCurrent) || timeline[0])}>
-                {deal.stage}
+                {deal.StageName}
               </Badge>
               <div className="text-sm text-muted-foreground">
-                {allStages.find(s => s.key === deal.stage)?.description || 'In progress'}
+                {allStages.find(s => s.key === deal.StageName)?.description || 'In progress'}
               </div>
             </div>
             <div className="text-right space-y-1">

@@ -8,6 +8,7 @@ export class AgentService {
     if (filters.company) params.append('company', filters.company)
     if (filters.division) params.append('division', filters.division)
     if (filters.search) params.append('search', filters.search)
+    if (filters.hasDeals) params.append('hasDeals', 'true')
     if (filters.page) params.append('page', filters.page.toString())
     if (filters.limit) params.append('limit', filters.limit.toString())
 
