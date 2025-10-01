@@ -57,40 +57,28 @@ export function DealTimeline({ deal }: DealTimelineProps) {
       order: 0,
     },
     {
-      key: 'PROSPECTING',
-      name: 'Prospecting',
-      description: 'Initial lead identification and qualification',
-      order: 1,
-    },
-    {
-      key: 'QUALIFICATION',
-      name: 'Qualification',
-      description: 'Assessing fit and opportunity potential',
-      order: 2,
-    },
-    {
-      key: 'PROPOSAL',
-      name: 'Proposal',
-      description: 'Preparing and presenting proposal',
-      order: 3,
-    },
-    {
       key: 'NEGOTIATION',
       name: 'Negotiation',
       description: 'Contract terms and pricing negotiation',
-      order: 4,
+      order: 1,
+    },
+    {
+      key: 'TERMS_AGREED_UPON',
+      name: 'Terms Agreed Upon',
+      description: 'Terms finalized and agreed by both parties',
+      order: 2,
     },
     {
       key: 'CLOSED_WON',
       name: 'Closed Won',
       description: 'Deal successfully closed',
-      order: 5,
+      order: 3,
     },
     {
       key: 'CLOSED_LOST',
       name: 'Closed Lost',
       description: 'Deal lost or cancelled',
-      order: 5,
+      order: 3,
     },
   ]
 
@@ -103,11 +91,14 @@ export function DealTimeline({ deal }: DealTimelineProps) {
   // Create timeline with stage information
   const timeline: StageInfo[] = allStages
     .filter(stage => {
-      // Show all stages up to current, plus closed states
-      if (stage.key === 'CLOSED_WON' || stage.key === 'CLOSED_LOST') {
+      // Always show Closed Won, only show Closed Lost if it's the current stage
+      if (stage.key === 'CLOSED_WON') {
+        return true
+      }
+      if (stage.key === 'CLOSED_LOST') {
         return stage.key === deal.StageName
       }
-      return stage.order <= Math.max(currentStageOrder, 4)
+      return stage.order <= Math.max(currentStageOrder, 2)
     })
     .map(stage => ({
       ...stage,

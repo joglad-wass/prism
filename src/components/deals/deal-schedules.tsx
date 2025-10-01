@@ -41,7 +41,7 @@ import {
   X,
 } from 'lucide-react'
 import { Deal, Schedule } from '../../types'
-import { useSchedulesByDeal } from '../../hooks/useSchedules'
+import { useSchedulesByDeal, useUpdateSchedule } from '../../hooks/useSchedules'
 
 interface DealSchedulesProps {
   deal: Deal
@@ -61,6 +61,7 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
   })
 
   const { data: schedulesResponse, isLoading, error } = useSchedulesByDeal(deal.id)
+  const updateScheduleMutation = useUpdateSchedule()
 
   const formatCurrency = (amount?: number | string) => {
     if (!amount) return 'N/A'
@@ -76,10 +77,17 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleDateString('en-US', {
+    // Parse as UTC to avoid timezone shifts
+    const date = new Date(dateString)
+    const year = date.getUTCFullYear()
+    const month = date.getUTCMonth()
+    const day = date.getUTCDate()
+    const utcDate = new Date(Date.UTC(year, month, day))
+    return utcDate.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
+      timeZone: 'UTC'
     })
   }
 
@@ -91,7 +99,9 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
     const isDateReached = scheduleDate <= today
     const currentStatus = schedule.ScheduleStatus || schedule.scheduleStatus || 'DRAFT'
     const isNotSent = currentStatus !== 'SENT_TO_WORKDAY'
-    return isDateReached && isNotSent
+    const hasNoInvoiceId = !schedule.WD_Invoice_ID__c || schedule.WD_Invoice_ID__c === ''
+    const isBillable = schedule.Billable !== false
+    return isDateReached && isNotSent && hasNoInvoiceId && isBillable
   }
 
   const handleCreateSchedule = () => {
@@ -112,23 +122,56 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
     console.log('Creating invoice for schedule:', schedule.id)
   }
 
+  const formatDateForInput = (dateString?: string) => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return ''
+    return date.toISOString().split('T')[0]
+  }
+
+  const calculateSplitPercent = (wassermannAmount?: number | string, totalAmount?: number | string): number | undefined => {
+    const wasserman = typeof wassermannAmount === 'string' ? parseFloat(wassermannAmount) : wassermannAmount
+    const total = typeof totalAmount === 'string' ? parseFloat(totalAmount) : totalAmount
+
+    if (!wasserman || !total || isNaN(wasserman) || isNaN(total) || total === 0) {
+      return undefined
+    }
+
+    return Math.round((wasserman / total) * 100 * 100) / 100 // Round to 2 decimal places
+  }
+
   const handleEditSchedule = (schedule: Schedule) => {
     setEditingScheduleId(schedule.id)
+    const defaultSplitPercent = schedule.ScheduleSplitPercent || calculateSplitPercent(schedule.Wasserman_Invoice_Line_Amount__c, schedule.Revenue)
+
     setEditingSchedule({
       Description: schedule.Description,
       Revenue: schedule.Revenue,
       ScheduleDate: schedule.ScheduleDate,
       Type: schedule.Type,
-      ScheduleSplitPercent: schedule.ScheduleSplitPercent,
+      ScheduleSplitPercent: defaultSplitPercent,
       Billable: schedule.Billable,
+      Talent_Invoice_Line_Amount__c: schedule.Talent_Invoice_Line_Amount__c,
+      Wasserman_Invoice_Line_Amount__c: schedule.Wasserman_Invoice_Line_Amount__c,
+      WD_Invoice_ID__c: schedule.WD_Invoice_ID__c,
+      WD_Payment_Term__c: schedule.WD_Payment_Term__c,
     })
   }
 
-  const handleSaveEdit = () => {
-    // Future: Implement schedule update API call
-    console.log('Saving schedule:', editingScheduleId, editingSchedule)
-    setEditingScheduleId(null)
-    setEditingSchedule({})
+  const handleSaveEdit = async () => {
+    if (!editingScheduleId) return
+
+    try {
+      await updateScheduleMutation.mutateAsync({
+        id: editingScheduleId,
+        schedule: editingSchedule,
+      })
+      setEditingScheduleId(null)
+      setEditingSchedule({})
+    } catch (error) {
+      console.error('Failed to update schedule:', error)
+      // TODO: Show error toast notification
+    }
   }
 
   const handleCancelEdit = () => {
@@ -140,6 +183,11 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
     const newExpanded = new Set(expandedScheduleIds)
     if (newExpanded.has(scheduleId)) {
       newExpanded.delete(scheduleId)
+      // If this schedule is being edited, cancel the edit
+      if (editingScheduleId === scheduleId) {
+        setEditingScheduleId(null)
+        setEditingSchedule({})
+      }
     } else {
       newExpanded.add(scheduleId)
     }
@@ -216,7 +264,7 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sendable</CardTitle>
+            <CardTitle className="text-sm font-medium">Awaiting Invoice</CardTitle>
             <Send className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -329,60 +377,78 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
               No schedules created yet
             </div>
           ) : (
-            <div className="grid gap-4">
-              {schedules.map((schedule) => {
-                const isExpanded = expandedScheduleIds.has(schedule.id)
-                return (
-                  <Card key={schedule.id} className="hover:shadow-md transition-shadow">
+            <div className="space-y-6">
+              {Array.from(new Set(schedules.map(s => s.Description || 'Untitled Schedule')))
+                .map((description) => {
+                  const schedulesForDescription = schedules.filter(s =>
+                    (s.Description || 'Untitled Schedule') === description
+                  )
+                  const totalRevenue = schedulesForDescription.reduce((sum, schedule) => {
+                    const revenue = typeof schedule.Revenue === 'string'
+                      ? parseFloat(schedule.Revenue)
+                      : (schedule.Revenue || 0)
+                    return sum + (isNaN(revenue) ? 0 : revenue)
+                  }, 0)
+
+                  return (
+                    <div key={description} className="space-y-3">
+                      <div className="flex items-center gap-2 pb-2 border-b">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <h3 className="font-semibold text-lg">{description}</h3>
+                        <Badge variant="outline">
+                          {schedulesForDescription.length} {schedulesForDescription.length === 1 ? 'schedule' : 'schedules'}
+                        </Badge>
+                        <span className="ml-auto text-sm font-semibold">
+                          {formatCurrency(totalRevenue)}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {schedulesForDescription.map((schedule) => {
+                          const isExpanded = expandedScheduleIds.has(schedule.id)
+                          return (
+                            <Card key={schedule.id} className={`hover:shadow-md transition-shadow ${isExpanded ? 'md:col-span-2' : ''}`}>
                     <CardHeader
-                      className="cursor-pointer"
+                      className="cursor-pointer py-3 px-4"
                       onClick={() => toggleScheduleExpansion(schedule.id)}
                     >
                       <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            <Calendar className="h-5 w-5" />
-                            {schedule.Description || 'Untitled Schedule'}
-                          </CardTitle>
-                          <CardDescription className="flex items-center gap-2">
-                            {canSendToWorkday(schedule) && (
-                              <AlertCircle className="h-4 w-4 text-amber-500" />
-                            )}
-                            Due: {formatDate(schedule.ScheduleDate)}
-                          </CardDescription>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-orange-600">
+                        <div className="flex items-center gap-6">
+                          {schedule.WD_Invoice_ID__c && schedule.WD_Invoice_ID__c !== '' && (
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          )}
+                          <div>
+                            <div className="text-xs text-muted-foreground">Date</div>
+                            <div className="text-sm font-medium">{formatDate(schedule.ScheduleDate)}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Amount</div>
+                            <div className="text-sm font-semibold text-orange-600">
                               {formatCurrency(schedule.Revenue)}
                             </div>
-                            <div className="flex gap-2 mt-1">
-                              {getScheduleStatusBadge(schedule.ScheduleStatus || schedule.scheduleStatus || 'DRAFT')}
-                              {getPaymentStatusBadge(schedule.WD_Payment_Status__c || schedule.paymentStatus || 'PENDING')}
-                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {canSendToWorkday(schedule) && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleCreateInvoice(schedule)
-                                }}
-                              >
-                                <FileText className="h-3 w-3 mr-1" />
-                                Create Invoice
-                              </Button>
-                            )}
-                            <Button variant="ghost" size="sm">
-                              {isExpanded ? (
-                                <ChevronUp className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isExpanded && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleEditSchedule(schedule)
+                              }}
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit
                             </Button>
-                          </div>
+                          )}
+                          <Button variant="ghost" size="sm">
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </Button>
                         </div>
                       </div>
                     </CardHeader>
@@ -393,7 +459,7 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
                           <div className="space-y-4">
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                               <div className="space-y-2">
-                                <Label className="text-sm text-muted-foreground">Description</Label>
+                                <Label className="text-xs text-muted-foreground">Description</Label>
                                 <Input
                                   value={editingSchedule.Description || ''}
                                   onChange={(e) => setEditingSchedule({ ...editingSchedule, Description: e.target.value })}
@@ -405,7 +471,7 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
                                 <Input
                                   type="number"
                                   value={editingSchedule.Revenue || ''}
-                                  onChange={(e) => setEditingSchedule({ ...editingSchedule, Revenue: e.target.value })}
+                                  onChange={(e) => setEditingSchedule({ ...editingSchedule, Revenue: e.target.value ? parseFloat(e.target.value) : undefined })}
                                   placeholder="0.00"
                                 />
                               </div>
@@ -413,7 +479,7 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
                                 <Label className="text-sm text-muted-foreground">Schedule Date</Label>
                                 <Input
                                   type="date"
-                                  value={editingSchedule.ScheduleDate || ''}
+                                  value={formatDateForInput(editingSchedule.ScheduleDate)}
                                   onChange={(e) => setEditingSchedule({ ...editingSchedule, ScheduleDate: e.target.value })}
                                 />
                               </div>
@@ -426,11 +492,64 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
                                 />
                               </div>
                               <div className="space-y-2">
+                                <Label className="text-sm text-muted-foreground">Talent Amount</Label>
+                                <Input
+                                  type="number"
+                                  value={editingSchedule.Talent_Invoice_Line_Amount__c || ''}
+                                  onChange={(e) => {
+                                    const newTalentAmount = e.target.value ? parseFloat(e.target.value) : undefined
+                                    const calculatedSplit = calculateSplitPercent(editingSchedule.Wasserman_Invoice_Line_Amount__c, editingSchedule.Revenue)
+                                    setEditingSchedule({
+                                      ...editingSchedule,
+                                      Talent_Invoice_Line_Amount__c: newTalentAmount,
+                                      ScheduleSplitPercent: calculatedSplit
+                                    })
+                                  }}
+                                  placeholder="0.00"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-sm text-muted-foreground">Wasserman Amount</Label>
+                                <Input
+                                  type="number"
+                                  value={editingSchedule.Wasserman_Invoice_Line_Amount__c || ''}
+                                  onChange={(e) => {
+                                    const newWassermanAmount = e.target.value ? parseFloat(e.target.value) : undefined
+                                    const calculatedSplit = calculateSplitPercent(newWassermanAmount, editingSchedule.Revenue)
+                                    setEditingSchedule({
+                                      ...editingSchedule,
+                                      Wasserman_Invoice_Line_Amount__c: newWassermanAmount,
+                                      ScheduleSplitPercent: calculatedSplit
+                                    })
+                                  }}
+                                  placeholder="0.00"
+                                />
+                              </div>
+                              <div className="space-y-2">
                                 <Label className="text-sm text-muted-foreground">Split %</Label>
                                 <Input
                                   type="number"
                                   value={editingSchedule.ScheduleSplitPercent || ''}
-                                  onChange={(e) => setEditingSchedule({ ...editingSchedule, ScheduleSplitPercent: e.target.value ? parseFloat(e.target.value) : undefined })}
+                                  onChange={(e) => {
+                                    const newSplitPercent = e.target.value ? parseFloat(e.target.value) : undefined
+                                    const revenue = typeof editingSchedule.Revenue === 'string' ? parseFloat(editingSchedule.Revenue) : editingSchedule.Revenue
+
+                                    if (newSplitPercent && revenue) {
+                                      const newWassermanAmount = (revenue * newSplitPercent) / 100
+                                      const newTalentAmount = revenue - newWassermanAmount
+                                      setEditingSchedule({
+                                        ...editingSchedule,
+                                        ScheduleSplitPercent: newSplitPercent,
+                                        Wasserman_Invoice_Line_Amount__c: Math.round(newWassermanAmount * 100) / 100,
+                                        Talent_Invoice_Line_Amount__c: Math.round(newTalentAmount * 100) / 100
+                                      })
+                                    } else {
+                                      setEditingSchedule({
+                                        ...editingSchedule,
+                                        ScheduleSplitPercent: newSplitPercent
+                                      })
+                                    }
+                                  }}
                                   placeholder="0"
                                   min="0"
                                   max="100"
@@ -450,6 +569,22 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
                                     <SelectItem value="false">No</SelectItem>
                                   </SelectContent>
                                 </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-sm text-muted-foreground">Invoice ID</Label>
+                                <Input
+                                  value={editingSchedule.WD_Invoice_ID__c || ''}
+                                  onChange={(e) => setEditingSchedule({ ...editingSchedule, WD_Invoice_ID__c: e.target.value })}
+                                  placeholder="Invoice ID"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-sm text-muted-foreground">Payment Terms</Label>
+                                <Input
+                                  value={editingSchedule.WD_Payment_Term__c || ''}
+                                  onChange={(e) => setEditingSchedule({ ...editingSchedule, WD_Payment_Term__c: e.target.value })}
+                                  placeholder="Payment terms"
+                                />
                               </div>
                             </div>
                             <div className="flex justify-end gap-2">
@@ -473,83 +608,88 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
                         ) : (
                           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             <div>
-                              <p className="text-sm text-muted-foreground">Type</p>
-                              <p className="font-medium">{schedule.Type || 'N/A'}</p>
+                              <p className="text-xs text-muted-foreground">Type</p>
+                              <p className="text-sm font-medium">{schedule.Type || 'N/A'}</p>
                             </div>
                             <div>
-                              <p className="text-sm text-muted-foreground">Split %</p>
-                              <p className="font-medium">{schedule.ScheduleSplitPercent ? `${schedule.ScheduleSplitPercent}%` : '-'}</p>
+                              <p className="text-xs text-muted-foreground">Split %</p>
+                              <p className="text-sm font-medium">
+                                {schedule.ScheduleSplitPercent
+                                  ? `${schedule.ScheduleSplitPercent}%`
+                                  : calculateSplitPercent(schedule.Wasserman_Invoice_Line_Amount__c, schedule.Revenue)
+                                    ? `${calculateSplitPercent(schedule.Wasserman_Invoice_Line_Amount__c, schedule.Revenue)}%`
+                                    : '-'}
+                              </p>
                             </div>
                             <div>
-                              <p className="text-sm text-muted-foreground">Billable</p>
-                              <p className="font-medium">{schedule.Billable !== undefined ? (schedule.Billable ? 'Yes' : 'No') : '-'}</p>
+                              <p className="text-xs text-muted-foreground">Billable</p>
+                              <p className="text-sm font-medium">{schedule.Billable !== undefined ? (schedule.Billable ? 'Yes' : 'No') : '-'}</p>
                             </div>
-                            {schedule.WD_Invoice_Reference_ID__c && (
+                            {/* {schedule.WD_Invoice_Reference_ID__c && (
                               <div>
                                 <p className="text-sm text-muted-foreground">Invoice Reference</p>
                                 <p className="font-medium text-xs">{schedule.WD_Invoice_Reference_ID__c}</p>
                               </div>
-                            )}
+                            )} */}
                           </div>
                         )}
 
-                        {/* Invoice Information */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
-                          <div>
-                            <p className="text-sm text-muted-foreground flex items-center gap-1">
-                              <FileText className="h-3 w-3" />
-                              Talent Amount
-                            </p>
-                            <p className="font-medium">{formatCurrency(schedule.Talent_Invoice_Line_Amount__c)}</p>
+                        {/* Invoice Details */}
+                        {editingScheduleId !== schedule.id && (
+                          <div className="space-y-3 p-4 bg-muted rounded-lg">
+                            <h4 className="text-xs font-semibold">Invoice Details</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                              <div>
+                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <FileText className="h-3 w-3" />
+                                  Talent Amount
+                                </p>
+                                <p className="text-sm font-medium">{formatCurrency(schedule.Talent_Invoice_Line_Amount__c)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Wasserman Amount</p>
+                                <p className="text-sm font-medium">{formatCurrency(schedule.Wasserman_Invoice_Line_Amount__c)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Invoice ID</p>
+                                <p className="text-sm font-medium">{(schedule.WD_Invoice_ID__c && schedule.WD_Invoice_ID__c !== '') ? schedule.WD_Invoice_ID__c : '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Payment Terms</p>
+                                <p className="text-sm font-medium">{(schedule.WD_Payment_Term__c && schedule.WD_Payment_Term__c !== '') ? schedule.WD_Payment_Term__c : '-'}</p>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Wasserman Amount</p>
-                            <p className="font-medium">{formatCurrency(schedule.Wasserman_Invoice_Line_Amount__c)}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Invoice ID</p>
-                            <p className="font-medium text-xs">{(schedule.WD_Invoice_ID__c && schedule.WD_Invoice_ID__c !== '') ? schedule.WD_Invoice_ID__c : '-'}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Payment Terms</p>
-                            <p className="font-medium">{(schedule.WD_Payment_Term__c && schedule.WD_Payment_Term__c !== '') ? schedule.WD_Payment_Term__c : '-'}</p>
-                          </div>
-                        </div>
+                        )}
 
                         {/* Actions */}
-                        {editingScheduleId !== schedule.id && (
+                        {editingScheduleId !== schedule.id && canSendToWorkday(schedule) && (
                           <div className="flex justify-end gap-2">
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleEditSchedule(schedule)}
+                              onClick={() => handleCreateInvoice(schedule)}
                             >
-                              <Edit className="h-3 w-3 mr-2" />
-                              Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                // Handle external link action
-                              }}
-                            >
-                              <ExternalLink className="h-3 w-3 mr-2" />
-                              View Details
+                              <FileText className="h-3 w-3 mr-2" />
+                              Create Invoice
                             </Button>
                           </div>
                         )}
                       </CardContent>
                     )}
                   </Card>
-                )
-              })}
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Workday Integration Info */}
+      {/* Workday Integration Info
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -587,7 +727,7 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
             )}
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   )
 }

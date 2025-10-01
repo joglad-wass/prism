@@ -54,6 +54,11 @@ export function DealProducts({ deal }: DealProductsProps) {
     Description: '',
   })
 
+  const handleCreateWorkdayProject = () => {
+    // Future: Implement Workday project creation
+    console.log('Creating Workday project for deal:', deal.id)
+  }
+
   const formatCurrency = (amount?: number | string) => {
     if (!amount) return 'N/A'
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount
@@ -66,14 +71,6 @@ export function DealProducts({ deal }: DealProductsProps) {
     }).format(numAmount)
   }
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
-  }
 
   const handleCreateProduct = () => {
     // Future: Implement product creation
@@ -94,6 +91,34 @@ export function DealProducts({ deal }: DealProductsProps) {
       : (product.UnitPrice || 0)
     return sum + (isNaN(unitPrice) ? 0 : unitPrice)
   }, 0)
+
+  // Extract and deduplicate Workday projects from products
+  const workdayProjects = products.reduce((acc, product) => {
+    if (product.WD_PRJ_ID__c) {
+      const existingProject = acc.find(p => p.WD_PRJ_ID__c === product.WD_PRJ_ID__c)
+      if (!existingProject) {
+        // Extract project name before "PRODUCT NAME:"
+        let projectName = product.WD_Project_Name__c || ''
+        const productNameIndex = projectName.indexOf('PRODUCT NAME:')
+        if (productNameIndex !== -1) {
+          projectName = projectName.substring(0, productNameIndex).trim()
+        }
+
+        acc.push({
+          WD_PRJ_ID__c: product.WD_PRJ_ID__c,
+          WD_Project_Name__c: projectName,
+          Workday_Project_State__c: product.Workday_Project_State__c,
+          Workday_Project_Status__c: product.Workday_Project_Status__c,
+        })
+      }
+    }
+    return acc
+  }, [] as Array<{
+    WD_PRJ_ID__c: string
+    WD_Project_Name__c?: string
+    Workday_Project_State__c?: string
+    Workday_Project_Status__c?: string
+  }>)
 
   return (
     <div className="space-y-6">
@@ -293,57 +318,67 @@ export function DealProducts({ deal }: DealProductsProps) {
         </CardContent>
       </Card>
 
-      {/* Product Details by Schedule */}
-      {products.some(product => product.schedules && product.schedules.length > 0) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Product Schedule Breakdown</CardTitle>
-            <CardDescription>
-              Payment schedules organized by product
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {products
-                .filter(product => product.schedules && product.schedules.length > 0)
-                .map((product) => (
-                <div key={product.id} className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="font-medium">{product.Product_Name__c}</h4>
-                    <Badge variant="outline">
-                      {product.schedules?.length || 0} schedules
-                    </Badge>
-                  </div>
+      {/* Workday Integration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ExternalLink className="h-5 w-5" />
+            Workday Integration
+          </CardTitle>
+          <CardDescription>
+            {workdayProjects.length > 0
+              ? `${workdayProjects.length} Workday ${workdayProjects.length === 1 ? 'project' : 'projects'} linked to this deal`
+              : 'Project creation and management in Workday'
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {workdayProjects.length === 0 ? (
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <div className="font-medium">Workday Project</div>
+                <div className="text-sm text-muted-foreground">
+                  No project created yet
+                </div>
+              </div>
 
-                  <div className="ml-6 space-y-2">
-                    {product.schedules?.map((schedule) => (
-                      <div key={schedule.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium">
-                            {schedule.Description || 'Untitled Schedule'}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatDate(schedule.ScheduleDate)}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-medium">
-                            {formatCurrency(schedule.Revenue)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {schedule.scheduleStatus || 'DRAFT'}
-                          </div>
-                        </div>
+              <Button onClick={handleCreateWorkdayProject}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Project
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {workdayProjects.map((project) => (
+                <div key={project.WD_PRJ_ID__c} className="flex items-center justify-between p-4 rounded-lg border">
+                  <div className="space-y-1">
+                    <div className="font-medium">
+                      {project.WD_Project_Name__c || 'Untitled Project'}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Project ID: {project.WD_PRJ_ID__c}
+                    </div>
+                    {(project.Workday_Project_State__c || project.Workday_Project_Status__c) && (
+                      <div className="flex gap-2 mt-2">
+                        {project.Workday_Project_State__c && (
+                          <Badge variant="secondary">{project.Workday_Project_State__c}</Badge>
+                        )}
+                        {project.Workday_Project_Status__c && (
+                          <Badge variant="outline">{project.Workday_Project_Status__c}</Badge>
+                        )}
                       </div>
-                    ))}
+                    )}
                   </div>
+                  <Button variant="outline">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Open in Workday
+                  </Button>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -350,7 +350,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
                       <TableCell>{deal.owner}</TableCell>
                       <TableCell>
                         <Badge variant={getStatusVariant(deal.status)}>
-                          {deal.status.replace('_', ' ')}
+                          {deal.status?.replace('_', ' ') || 'Unknown'}
                         </Badge>
                       </TableCell>
                       <TableCell>{formatCurrency(deal.amount)}</TableCell>

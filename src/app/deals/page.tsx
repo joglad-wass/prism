@@ -69,6 +69,23 @@ export default function DealsPage() {
     }).format(amount)
   }
 
+  const formatCompactCurrency = (amount?: number) => {
+    if (!amount) return 'N/A'
+
+    const absAmount = Math.abs(amount)
+    const sign = amount < 0 ? '-' : ''
+
+    if (absAmount >= 1_000_000_000) {
+      return `${sign}$${(absAmount / 1_000_000_000).toFixed(1)}B`
+    } else if (absAmount >= 1_000_000) {
+      return `${sign}$${(absAmount / 1_000_000).toFixed(1)}M`
+    } else if (absAmount >= 1_000) {
+      return `${sign}$${(absAmount / 1_000).toFixed(1)}K`
+    } else {
+      return `${sign}$${absAmount.toFixed(2)}`
+    }
+  }
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A'
     return new Date(dateString).toLocaleDateString()
@@ -157,7 +174,7 @@ export default function DealsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCurrency(pipelineStats.total)}
+                {formatCompactCurrency(pipelineStats.total)}
               </div>
               <p className="text-xs text-muted-foreground">
                 Total value

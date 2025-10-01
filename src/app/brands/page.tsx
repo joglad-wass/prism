@@ -258,7 +258,7 @@ export default function BrandsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Brand Name</TableHead>
-                    <TableHead>Type</TableHead>
+                    {/* <TableHead>Type</TableHead> */}
                     <TableHead>Status</TableHead>
                     <TableHead>Industry</TableHead>
                     <TableHead>Owner</TableHead>
@@ -292,11 +292,11 @@ export default function BrandsPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        {/* <TableCell>
                           <Badge variant={getTypeVariant(brand.type)}>
                             {brand.type}
                           </Badge>
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell>
                           <Badge variant={getStatusVariant(brand.status)}>
                             {brand.status}

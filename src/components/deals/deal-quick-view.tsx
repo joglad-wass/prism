@@ -222,7 +222,7 @@ export function DealQuickView({ deal, open, onOpenChange, onViewDetails }: DealQ
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Close Date</span>
               </div>
-              <span className="text-sm text-muted-foreground">{formatDate(deal.closeDate)}</span>
+              <span className="text-sm text-muted-foreground">{formatDate(deal.CloseDate)}</span>
             </div>
           </div>
 

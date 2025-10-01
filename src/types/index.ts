@@ -322,6 +322,11 @@ export interface Product {
   Workday_Company__c?: string
   Workday_Project_State__c?: string
 
+  // Workday Project Fields
+  WD_PRJ_ID__c?: string
+  WD_Project_Name__c?: string
+  Workday_Project_Status__c?: string
+
   // Relationships
   OpportunityId: string
   deal?: Deal
