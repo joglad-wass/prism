@@ -38,8 +38,14 @@ import {
   Clock,
   ExternalLink,
   Hash,
+  Pencil,
+  Loader2,
+  Edit,
 } from 'lucide-react'
-import { Deal } from '../../types'
+import { Deal, Product } from '../../types'
+import { useUpdateProduct } from '../../hooks/useProducts'
+import { useQueryClient } from '@tanstack/react-query'
+import { dealKeys } from '../../hooks/useDeals'
 
 interface DealProductsProps {
   deal: Deal
@@ -47,6 +53,15 @@ interface DealProductsProps {
 
 export function DealProducts({ deal }: DealProductsProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    Product_Name__c: '',
+    ProductCode: '',
+    UnitPrice: '',
+    Description: '',
+    Project_Deliverables__c: '',
+  })
   const [newProduct, setNewProduct] = useState({
     Product_Name__c: '',
     ProductCode: '',
@@ -54,9 +69,49 @@ export function DealProducts({ deal }: DealProductsProps) {
     Description: '',
   })
 
+  const queryClient = useQueryClient()
+  const updateProduct = useUpdateProduct()
+
   const handleCreateWorkdayProject = () => {
     // Future: Implement Workday project creation
     console.log('Creating Workday project for deal:', deal.id)
+  }
+
+  const handleEditClick = (product: Product) => {
+    setEditingProduct(product)
+    setEditForm({
+      Product_Name__c: product.Product_Name__c || '',
+      ProductCode: product.ProductCode || '',
+      UnitPrice: product.UnitPrice?.toString() || '',
+      Description: product.Description || '',
+      Project_Deliverables__c: product.Project_Deliverables__c || '',
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingProduct) return
+
+    try {
+      await updateProduct.mutateAsync({
+        id: editingProduct.id,
+        product: {
+          Product_Name__c: editForm.Product_Name__c,
+          ProductCode: editForm.ProductCode,
+          UnitPrice: editForm.UnitPrice ? parseFloat(editForm.UnitPrice) : undefined,
+          Description: editForm.Description,
+          Project_Deliverables__c: editForm.Project_Deliverables__c,
+        },
+      })
+
+      // Invalidate the deal query to refresh the products
+      queryClient.invalidateQueries({ queryKey: dealKeys.detail(deal.id) })
+
+      setIsEditDialogOpen(false)
+      setEditingProduct(null)
+    } catch (error) {
+      console.error('Failed to update product:', error)
+    }
   }
 
   const formatCurrency = (amount?: number | string) => {
@@ -249,6 +304,94 @@ export function DealProducts({ deal }: DealProductsProps) {
           </div>
         </CardHeader>
         <CardContent>
+          {/* Edit Product Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Edit Product</DialogTitle>
+                <DialogDescription>
+                  Update product details and save changes
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editProjectDeliverables">Project Deliverables</Label>
+                  <Input
+                    id="editProjectDeliverables"
+                    placeholder="Project deliverables..."
+                    value={editForm.Project_Deliverables__c}
+                    onChange={(e) => setEditForm({ ...editForm, Project_Deliverables__c: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editProductName">Product Name</Label>
+                  <Input
+                    id="editProductName"
+                    placeholder="Product name..."
+                    value={editForm.Product_Name__c}
+                    onChange={(e) => setEditForm({ ...editForm, Product_Name__c: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editProductCode">Cost Center</Label>
+                  <Input
+                    id="editProductCode"
+                    placeholder="Cost center code..."
+                    value={editForm.ProductCode}
+                    onChange={(e) => setEditForm({ ...editForm, ProductCode: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editUnitPrice">Unit Price</Label>
+                  <Input
+                    id="editUnitPrice"
+                    type="number"
+                    placeholder="0.00"
+                    value={editForm.UnitPrice}
+                    onChange={(e) => setEditForm({ ...editForm, UnitPrice: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editDescription">Description</Label>
+                  <Textarea
+                    id="editDescription"
+                    placeholder="Product description..."
+                    value={editForm.Description}
+                    onChange={(e) => setEditForm({ ...editForm, Description: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsEditDialogOpen(false)
+                      setEditingProduct(null)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSaveEdit}
+                    disabled={updateProduct.isPending}
+                  >
+                    {updateProduct.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
           {products.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
               No products added yet
@@ -303,11 +446,14 @@ export function DealProducts({ deal }: DealProductsProps) {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button size="sm" variant="ghost">
-                            <ExternalLink className="h-3 w-3" />
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditClick(product)}
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

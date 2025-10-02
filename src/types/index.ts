@@ -451,6 +451,29 @@ export interface EmailLog {
   brand?: Brand
 }
 
+export interface ActivityLog {
+  id: string
+  createdAt: string
+
+  // Activity details
+  activityType: string // PRODUCT_CREATED, SCHEDULE_CREATED, etc.
+  entityType: string  // Product, Schedule, Note, Deal, Payment
+  entityId?: string
+
+  // Change details
+  title: string
+  description?: string
+  metadata?: any
+
+  // User tracking
+  actorId?: string
+  actor?: Agent
+
+  // Deal relationship
+  dealId: string
+  deal?: Deal
+}
+
 // API Response Types
 export interface PaginatedResponse<T> {
   data: T[]

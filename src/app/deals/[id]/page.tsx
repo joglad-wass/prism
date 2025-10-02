@@ -494,7 +494,7 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="overview">Activity</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="schedules">Schedules</TabsTrigger>
@@ -507,7 +507,23 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
           </TabsContent>
 
           <TabsContent value="timeline">
-            <DealTimeline deal={deal} />
+            <DealTimeline
+              deal={deal}
+              onNavigateToSchedule={(scheduleId) => {
+                setActiveTab('schedules')
+                // Store the schedule ID to expand it
+                setTimeout(() => {
+                  const element = document.getElementById(`schedule-${scheduleId}`)
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    element.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2')
+                    setTimeout(() => {
+                      element.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2')
+                    }, 2000)
+                  }
+                }, 100)
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="products">

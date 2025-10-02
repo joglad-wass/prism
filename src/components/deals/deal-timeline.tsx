@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import {
   Clock,
   CheckCircle,
@@ -11,11 +12,15 @@ import {
   Calendar,
   Timer,
   MessageCircle,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
+import { useState } from 'react'
 import { Deal } from '../../types'
 
 interface DealTimelineProps {
   deal: Deal
+  onNavigateToSchedule?: (scheduleId: string) => void
 }
 
 interface StageInfo {
@@ -29,7 +34,9 @@ interface StageInfo {
   daysInStage?: number
 }
 
-export function DealTimeline({ deal }: DealTimelineProps) {
+export function DealTimeline({ deal, onNavigateToSchedule }: DealTimelineProps) {
+  const [calendarDate, setCalendarDate] = useState(new Date())
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return null
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -39,13 +46,200 @@ export function DealTimeline({ deal }: DealTimelineProps) {
     })
   }
 
-  const calculateDaysInStage = () => {
-    if (!deal.Stage_Last_Updated__c) return null
+  const calculateDaysInStage = (): number | undefined => {
+    if (!deal.Stage_Last_Updated__c) return undefined
     const stageDate = new Date(deal.Stage_Last_Updated__c)
     const today = new Date()
     const diffTime = Math.abs(today.getTime() - stageDate.getTime())
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     return diffDays
+  }
+
+  // Calendar helpers
+  const getCalendarDates = () => {
+    const dates: Array<{
+      date: Date
+      label: string
+      amount?: number
+      type: string
+      scheduleId?: string
+      productName?: string
+      deliverables?: string
+      invoiceId?: string
+      paymentStatus?: string
+      poNumber?: string
+      paymentTerms?: string
+      scheduleStatus?: string
+    }> = []
+
+    // Handle start date - try multiple field names
+    const startDate = deal.startDate || (deal as any).StartDate || deal.createdAt
+    if (startDate) {
+      dates.push({
+        date: new Date(startDate),
+        label: 'Deal Start',
+        type: 'start'
+      })
+    }
+
+    // Handle close date - try multiple field names
+    const closeDate = deal.closeDate || (deal as any).CloseDate
+    if (closeDate) {
+      dates.push({
+        date: new Date(closeDate),
+        label: 'Expected Close',
+        type: 'close'
+      })
+    }
+
+    deal.products?.forEach((product) => {
+      product.schedules?.forEach((schedule) => {
+        if (schedule.ScheduleDate) {
+          dates.push({
+            date: new Date(schedule.ScheduleDate),
+            label: schedule.Description || 'Schedule',
+            amount: schedule.Revenue,
+            type: 'invoice',
+            scheduleId: schedule.id,
+            productName: product.Product_Name__c,
+            deliverables: product.Project_Deliverables__c,
+            invoiceId: schedule.WD_Invoice_ID__c,
+            paymentStatus: schedule.WD_Payment_Status__c,
+            poNumber: schedule.WD_PO_Number__c,
+            paymentTerms: schedule.WD_Payment_Term__c,
+            scheduleStatus: schedule.ScheduleStatus
+          })
+        }
+      })
+    })
+
+    deal.schedules?.filter(schedule => !deal.products?.some(product =>
+      product.schedules?.some(ps => ps.id === schedule.id)
+    )).forEach((schedule) => {
+      if (schedule.ScheduleDate) {
+        dates.push({
+          date: new Date(schedule.ScheduleDate),
+          label: schedule.Description || 'Schedule',
+          amount: schedule.Revenue,
+          type: 'invoice',
+          scheduleId: schedule.id,
+          invoiceId: schedule.WD_Invoice_ID__c,
+          paymentStatus: schedule.WD_Payment_Status__c,
+          poNumber: schedule.WD_PO_Number__c,
+          paymentTerms: schedule.WD_Payment_Term__c,
+          scheduleStatus: schedule.ScheduleStatus
+        })
+      }
+    })
+
+    return dates
+  }
+
+  const generateCalendarDays = () => {
+    const allDates = getCalendarDates()
+    if (allDates.length === 0) return { days: [], monthYear: '', hasEvents: false }
+
+    const currentMonth = calendarDate.getMonth()
+    const currentYear = calendarDate.getFullYear()
+
+    const firstDay = new Date(currentYear, currentMonth, 1)
+    const lastDay = new Date(currentYear, currentMonth + 1, 0)
+    const startingDayOfWeek = firstDay.getDay()
+
+    const days: Array<{
+      day: number | null
+      isCurrentMonth: boolean
+      events: typeof allDates
+    }> = []
+
+    // Add empty cells for days before month starts
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push({ day: null, isCurrentMonth: false, events: [] })
+    }
+
+    // Add days of the month
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const eventsOnDay = allDates.filter(event => {
+        return event.date.getDate() === day &&
+               event.date.getMonth() === currentMonth &&
+               event.date.getFullYear() === currentYear
+      })
+
+      days.push({
+        day,
+        isCurrentMonth: true,
+        events: eventsOnDay
+      })
+    }
+
+    const monthYear = firstDay.toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric'
+    })
+
+    return { days, monthYear, hasEvents: true }
+  }
+
+  const previousMonth = () => {
+    setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))
+  }
+
+  const nextMonth = () => {
+    setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))
+  }
+
+  const jumpToNextEvent = () => {
+    const allDates = getCalendarDates()
+    if (allDates.length === 0) return
+
+    const currentMonthEnd = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0)
+
+    // Find the next event after the current month
+    const nextEvent = allDates
+      .filter(event => event.date > currentMonthEnd)
+      .sort((a, b) => a.date.getTime() - b.date.getTime())[0]
+
+    if (nextEvent) {
+      setCalendarDate(new Date(nextEvent.date.getFullYear(), nextEvent.date.getMonth(), 1))
+    }
+  }
+
+  const jumpToPreviousEvent = () => {
+    const allDates = getCalendarDates()
+    if (allDates.length === 0) return
+
+    const currentMonthStart = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1)
+
+    // Find the previous event before the current month
+    const previousEvent = allDates
+      .filter(event => event.date < currentMonthStart)
+      .sort((a, b) => b.date.getTime() - a.date.getTime())[0]
+
+    if (previousEvent) {
+      setCalendarDate(new Date(previousEvent.date.getFullYear(), previousEvent.date.getMonth(), 1))
+    }
+  }
+
+  const hasNextEvent = () => {
+    const allDates = getCalendarDates()
+    const currentMonthEnd = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0)
+    return allDates.some(event => event.date > currentMonthEnd)
+  }
+
+  const hasPreviousEvent = () => {
+    const allDates = getCalendarDates()
+    const currentMonthStart = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1)
+    return allDates.some(event => event.date < currentMonthStart)
+  }
+
+  const goToToday = () => {
+    setCalendarDate(new Date())
+  }
+
+  const isCurrentMonth = () => {
+    const today = new Date()
+    return calendarDate.getMonth() === today.getMonth() &&
+           calendarDate.getFullYear() === today.getFullYear()
   }
 
   // Define the deal stages in order
@@ -177,13 +371,23 @@ export function DealTimeline({ deal }: DealTimelineProps) {
       {/* Timeline View */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Deal Timeline
-          </CardTitle>
-          <CardDescription>
-            Track the progression through deal stages
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Deal Timeline
+              </CardTitle>
+              <CardDescription>
+                Track the progression through deal stages
+              </CardDescription>
+            </div>
+            {!isClosedWon && !isClosedLost && (
+              <Button className="flex items-center gap-2">
+                <ArrowRight className="h-4 w-4" />
+                Advance Stage
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
@@ -238,72 +442,276 @@ export function DealTimeline({ deal }: DealTimelineProps) {
         </CardContent>
       </Card>
 
-      {/* Stage Actions */}
-      {!isClosedWon && !isClosedLost && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Stage Actions</CardTitle>
-            <CardDescription>
-              Advance the deal to the next stage
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <div className="font-medium">Ready to advance?</div>
-                <div className="text-sm text-muted-foreground">
-                  Move this deal to the next stage in the pipeline
-                </div>
-              </div>
-
-              <Button className="flex items-center gap-2">
-                <ArrowRight className="h-4 w-4" />
-                Advance Stage
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Key Dates */}
+      {/* Calendar View */}
       <Card>
         <CardHeader>
-          <CardTitle>Key Dates</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Deal Calendar
+          </CardTitle>
+          <CardDescription>
+            Important dates and milestones for this deal
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Created</div>
-              <div className="text-sm text-muted-foreground">
-                {formatDate(deal.createdAt)}
-              </div>
-            </div>
+          {(() => {
+            const { days, monthYear, hasEvents } = generateCalendarDays()
 
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Last Updated</div>
-              <div className="text-sm text-muted-foreground">
-                {formatDate(deal.updatedAt)}
-              </div>
-            </div>
+            if (!hasEvents) {
+              return (
+                <div className="text-center py-6 text-muted-foreground">
+                  No calendar events yet
+                </div>
+              )
+            }
 
-            {deal.startDate && (
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Start Date</div>
-                <div className="text-sm text-muted-foreground">
-                  {formatDate(deal.startDate)}
+            return (
+              <div>
+                {/* Month/Year Header with Navigation */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={jumpToPreviousEvent}
+                      disabled={!hasPreviousEvent()}
+                      title="Jump to previous event"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <ChevronLeft className="h-4 w-4 -ml-3" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={previousMonth}
+                      title="Previous month"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToToday}
+                      disabled={isCurrentMonth()}
+                      title="Go to today"
+                    >
+                      Today
+                    </Button>
+                  </div>
+                  <div className="text-lg font-semibold">
+                    {monthYear}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={nextMonth}
+                      disabled={calendarDate.getFullYear() >= 2030}
+                      title="Next month"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={jumpToNextEvent}
+                      disabled={!hasNextEvent() || calendarDate.getFullYear() >= 2030}
+                      title="Jump to next event"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="h-4 w-4 -ml-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-1">
+                  {/* Day headers */}
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                    <div key={day} className="text-center text-xs font-medium text-muted-foreground p-2">
+                      {day}
+                    </div>
+                  ))}
+
+                  {/* Calendar days */}
+                  {days.map((dayInfo, index) => (
+                    <div
+                      key={index}
+                      className={`min-h-[80px] p-1 border rounded-lg ${
+                        dayInfo.isCurrentMonth
+                          ? dayInfo.events.length > 0
+                            ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900'
+                            : 'bg-background'
+                          : 'bg-muted/20'
+                      }`}
+                    >
+                      {dayInfo.day && (
+                        <>
+                          <div className={`text-xs font-medium p-1 ${
+                            dayInfo.events.length > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'
+                          }`}>
+                            {dayInfo.day}
+                          </div>
+
+                          {/* Events for this day */}
+                          <TooltipProvider delayDuration={300}>
+                            <div className="space-y-1">
+                              {dayInfo.events.map((event, eventIndex) => (
+                                <Tooltip key={eventIndex}>
+                                  <TooltipTrigger asChild>
+                                    <div
+                                      onClick={() => {
+                                        if (event.type === 'invoice' && event.scheduleId && onNavigateToSchedule) {
+                                          onNavigateToSchedule(event.scheduleId)
+                                        }
+                                      }}
+                                      className={`text-[10px] p-1 rounded truncate ${
+                                        event.type === 'invoice' && event.scheduleId && onNavigateToSchedule
+                                          ? 'cursor-pointer hover:ring-2 hover:ring-offset-1'
+                                          : 'cursor-default'
+                                      } ${
+                                        event.type === 'start'
+                                          ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
+                                          : event.type === 'close'
+                                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400'
+                                          : event.type === 'invoice'
+                                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400 hover:ring-blue-400'
+                                          : 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400'
+                                      }`}
+                                    >
+                                      {event.label}
+                                      {event.amount && (
+                                        <div className="font-medium">
+                                          ${(event.amount / 1000).toFixed(0)}k
+                                        </div>
+                                      )}
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" className="max-w-xs">
+                                    <div className="space-y-2">
+                                      {/* Event Header */}
+                                      <div>
+                                        <div className="font-semibold text-sm">{event.label}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {event.date.toLocaleDateString('en-US', {
+                                            weekday: 'long',
+                                            month: 'long',
+                                            day: 'numeric',
+                                            year: 'numeric'
+                                          })}
+                                        </div>
+                                      </div>
+
+                                      {/* Deal Information */}
+                                      <div className="space-y-1">
+                                        <div className="text-xs">
+                                          <span className="font-medium">Deal:</span> {deal.Name}
+                                        </div>
+                                        {deal.brand?.name && (
+                                          <div className="text-xs">
+                                            <span className="font-medium">Brand:</span> {deal.brand.name}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Amount */}
+                                      {event.amount && (
+                                        <div className="text-sm font-semibold">
+                                          {new Intl.NumberFormat('en-US', {
+                                            style: 'currency',
+                                            currency: 'USD',
+                                            minimumFractionDigits: 0,
+                                            maximumFractionDigits: 0,
+                                          }).format(event.amount)}
+                                        </div>
+                                      )}
+
+                                      {/* Invoice/Payment Details */}
+                                      {event.type === 'invoice' && (
+                                        <div className="space-y-1 border-t pt-2">
+                                          {event.productName && (
+                                            <div className="text-xs">
+                                              <span className="font-medium">Product:</span> {event.productName}
+                                            </div>
+                                          )}
+                                          {event.deliverables && (
+                                            <div className="text-xs">
+                                              <span className="font-medium">Deliverables:</span> {event.deliverables}
+                                            </div>
+                                          )}
+                                          {event.invoiceId && (
+                                            <div className="text-xs">
+                                              <span className="font-medium">Invoice ID:</span> {event.invoiceId}
+                                            </div>
+                                          )}
+                                          {event.poNumber && (
+                                            <div className="text-xs">
+                                              <span className="font-medium">PO Number:</span> {event.poNumber}
+                                            </div>
+                                          )}
+                                          {event.paymentStatus && (
+                                            <div className="text-xs">
+                                              <span className="font-medium">Payment Status:</span> {event.paymentStatus}
+                                            </div>
+                                          )}
+                                          {event.paymentTerms && (
+                                            <div className="text-xs">
+                                              <span className="font-medium">Payment Terms:</span> {event.paymentTerms}
+                                            </div>
+                                          )}
+                                          {event.scheduleStatus && (
+                                            <div className="text-xs">
+                                              <span className="font-medium">Status:</span> {event.scheduleStatus}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {/* Start/Close Date Details */}
+                                      {event.type === 'start' && (
+                                        <div className="text-xs text-muted-foreground border-t pt-2">
+                                          This is when the deal officially started
+                                        </div>
+                                      )}
+                                      {event.type === 'close' && (
+                                        <div className="text-xs text-muted-foreground border-t pt-2">
+                                          Expected closing date for this deal
+                                        </div>
+                                      )}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ))}
+                            </div>
+                          </TooltipProvider>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Legend */}
+                <div className="flex items-center gap-4 mt-4 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded bg-green-100 dark:bg-green-950" />
+                    <span className="text-muted-foreground">Start Date</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded bg-purple-100 dark:bg-purple-950" />
+                    <span className="text-muted-foreground">Close Date</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded bg-blue-100 dark:bg-blue-950" />
+                    <span className="text-muted-foreground">Schedule</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded bg-orange-100 dark:bg-orange-950" />
+                    <span className="text-muted-foreground">Payment</span>
+                  </div>
                 </div>
               </div>
-            )}
-
-            {deal.closeDate && (
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Expected Close</div>
-                <div className="text-sm text-muted-foreground">
-                  {formatDate(deal.closeDate)}
-                </div>
-              </div>
-            )}
-          </div>
+            )
+          })()}
         </CardContent>
       </Card>
     </div>

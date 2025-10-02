@@ -39,6 +39,7 @@ import {
   Edit,
   Save,
   X,
+  ReceiptText,
 } from 'lucide-react'
 import { Deal, Schedule } from '../../types'
 import { useSchedulesByDeal, useUpdateSchedule } from '../../hooks/useSchedules'
@@ -52,6 +53,8 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
   const [expandedScheduleIds, setExpandedScheduleIds] = useState<Set<string>>(new Set())
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null)
   const [editingSchedule, setEditingSchedule] = useState<Partial<Schedule>>({})
+  const [invoiceFilter, setInvoiceFilter] = useState<'all' | 'invoiced' | 'not-invoiced'>('all')
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'not-paid'>('all')
   const [newSchedule, setNewSchedule] = useState({
     description: '',
     Revenue: '',
@@ -223,7 +226,29 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
   }
 
   const schedules = schedulesResponse?.data || []
-  const totalScheduleValue = schedules.reduce((sum, schedule) => {
+
+  // Apply filters
+  const filteredSchedules = schedules.filter(schedule => {
+    // Invoice filter
+    if (invoiceFilter === 'invoiced' && (!schedule.WD_Invoice_ID__c || schedule.WD_Invoice_ID__c === '')) {
+      return false
+    }
+    if (invoiceFilter === 'not-invoiced' && schedule.WD_Invoice_ID__c && schedule.WD_Invoice_ID__c !== '') {
+      return false
+    }
+
+    // Payment filter
+    if (paymentFilter === 'paid' && schedule.WD_Payment_Status__c?.toLowerCase() !== 'paid') {
+      return false
+    }
+    if (paymentFilter === 'not-paid' && schedule.WD_Payment_Status__c?.toLowerCase() === 'paid') {
+      return false
+    }
+
+    return true
+  })
+
+  const totalScheduleValue = filteredSchedules.reduce((sum, schedule) => {
     const revenue = typeof schedule.Revenue === 'string'
       ? parseFloat(schedule.Revenue)
       : (schedule.Revenue || 0)
@@ -240,7 +265,7 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{schedules.length}</div>
+            <div className="text-2xl font-bold">{filteredSchedules.length}</div>
             <p className="text-xs text-muted-foreground">
               Payment schedules
             </p>
@@ -269,7 +294,7 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {schedules.filter(canSendToWorkday).length}
+              {filteredSchedules.filter(canSendToWorkday).length}
             </div>
             <p className="text-xs text-muted-foreground">
               Ready for Workday
@@ -289,80 +314,104 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
               </CardDescription>
             </div>
 
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Schedule
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Create New Schedule</DialogTitle>
-                  <DialogDescription>
-                    Add a new payment schedule for this deal
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      placeholder="Schedule description..."
-                      value={newSchedule.description}
-                      onChange={(e) => setNewSchedule({ ...newSchedule, description: e.target.value })}
-                    />
-                  </div>
+            <div className="flex items-center gap-2">
+              <Select value={invoiceFilter} onValueChange={(value: any) => setInvoiceFilter(value)}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Invoice Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Invoices</SelectItem>
+                  <SelectItem value="invoiced">Invoiced</SelectItem>
+                  <SelectItem value="not-invoiced">Not Invoiced</SelectItem>
+                </SelectContent>
+              </Select>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Amount</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      placeholder="0.00"
-                      value={newSchedule.Revenue}
-                      onChange={(e) => setNewSchedule({ ...newSchedule, Revenue: e.target.value })}
-                    />
-                  </div>
+              <Select value={paymentFilter} onValueChange={(value: any) => setPaymentFilter(value)}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Payment Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Payments</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="not-paid">Not Paid</SelectItem>
+                </SelectContent>
+              </Select>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Schedule Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={newSchedule.ScheduleDate}
-                      onChange={(e) => setNewSchedule({ ...newSchedule, ScheduleDate: e.target.value })}
-                    />
-                  </div>
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Schedule
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Create New Schedule</DialogTitle>
+                    <DialogDescription>
+                      Add a new payment schedule for this deal
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        placeholder="Schedule description..."
+                        value={newSchedule.description}
+                        onChange={(e) => setNewSchedule({ ...newSchedule, description: e.target.value })}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={newSchedule.scheduleStatus}
-                      onValueChange={(value) => setNewSchedule({ ...newSchedule, scheduleStatus: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="DRAFT">Draft</SelectItem>
-                        <SelectItem value="APPROVED">Approved</SelectItem>
-                        <SelectItem value="SENT_TO_WORKDAY">Sent to Workday</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="amount">Amount</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        placeholder="0.00"
+                        value={newSchedule.Revenue}
+                        onChange={(e) => setNewSchedule({ ...newSchedule, Revenue: e.target.value })}
+                      />
+                    </div>
 
-                  <div className="flex justify-end gap-2 pt-4">
-                    <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleCreateSchedule}>
-                      Create Schedule
-                    </Button>
+                    <div className="space-y-2">
+                      <Label htmlFor="date">Schedule Date</Label>
+                      <Input
+                        id="date"
+                        type="date"
+                        value={newSchedule.ScheduleDate}
+                        onChange={(e) => setNewSchedule({ ...newSchedule, ScheduleDate: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                      <Select
+                        value={newSchedule.scheduleStatus}
+                        onValueChange={(value) => setNewSchedule({ ...newSchedule, scheduleStatus: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="DRAFT">Draft</SelectItem>
+                          <SelectItem value="APPROVED">Approved</SelectItem>
+                          <SelectItem value="SENT_TO_WORKDAY">Sent to Workday</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleCreateSchedule}>
+                        Create Schedule
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -376,11 +425,15 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
             <div className="text-center py-6 text-muted-foreground">
               No schedules created yet
             </div>
+          ) : filteredSchedules.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              No schedules match the selected filters
+            </div>
           ) : (
             <div className="space-y-6">
-              {Array.from(new Set(schedules.map(s => s.Description || 'Untitled Schedule')))
+              {Array.from(new Set(filteredSchedules.map(s => s.Description || 'Untitled Schedule')))
                 .map((description) => {
-                  const schedulesForDescription = schedules.filter(s =>
+                  const schedulesForDescription = filteredSchedules.filter(s =>
                     (s.Description || 'Untitled Schedule') === description
                   )
                   const totalRevenue = schedulesForDescription.reduce((sum, schedule) => {
@@ -398,7 +451,7 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
                         <Badge variant="outline">
                           {schedulesForDescription.length} {schedulesForDescription.length === 1 ? 'schedule' : 'schedules'}
                         </Badge>
-                        <span className="ml-auto text-sm font-semibold">
+                        <span className="ml-auto text-lg font-semibold text-orange-600">
                           {formatCurrency(totalRevenue)}
                         </span>
                       </div>
@@ -409,21 +462,26 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
                           return (
                             <Card key={schedule.id} className={`hover:shadow-md transition-shadow ${isExpanded ? 'md:col-span-2' : ''}`}>
                     <CardHeader
-                      className="cursor-pointer py-3 px-4"
+                      className="cursor-pointer py-2 px-3"
                       onClick={() => toggleScheduleExpansion(schedule.id)}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-8">
                           {schedule.WD_Invoice_ID__c && schedule.WD_Invoice_ID__c !== '' && (
-                            <CheckCircle className="h-5 w-5 text-green-600" />
+                            <div className="flex items-center gap-1">
+                              <ReceiptText className="h-5 w-5 text-green-600" />
+                              {schedule.WD_Payment_Status__c?.toLowerCase() === 'paid' && (
+                                <DollarSign className="h-4 w-4 text-green-600" />
+                              )}
+                            </div>
                           )}
                           <div>
-                            <div className="text-xs text-muted-foreground">Date</div>
-                            <div className="text-sm font-medium">{formatDate(schedule.ScheduleDate)}</div>
+                            <div className="text-sm text-muted-foreground">Date</div>
+                            <div className="text-base font-medium">{formatDate(schedule.ScheduleDate)}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-muted-foreground">Amount</div>
-                            <div className="text-sm font-semibold text-orange-600">
+                            <div className="text-sm text-muted-foreground">Amount</div>
+                            <div className="text-base font-semibold text-white">
                               {formatCurrency(schedule.Revenue)}
                             </div>
                           </div>
@@ -606,57 +664,50 @@ export function DealSchedules({ deal }: DealSchedulesProps) {
                             </div>
                           </div>
                         ) : (
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Type</p>
-                              <p className="text-sm font-medium">{schedule.Type || 'N/A'}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Split %</p>
-                              <p className="text-sm font-medium">
-                                {schedule.ScheduleSplitPercent
-                                  ? `${schedule.ScheduleSplitPercent}%`
-                                  : calculateSplitPercent(schedule.Wasserman_Invoice_Line_Amount__c, schedule.Revenue)
-                                    ? `${calculateSplitPercent(schedule.Wasserman_Invoice_Line_Amount__c, schedule.Revenue)}%`
-                                    : '-'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Billable</p>
-                              <p className="text-sm font-medium">{schedule.Billable !== undefined ? (schedule.Billable ? 'Yes' : 'No') : '-'}</p>
-                            </div>
-                            {/* {schedule.WD_Invoice_Reference_ID__c && (
+                          <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-4">
                               <div>
-                                <p className="text-sm text-muted-foreground">Invoice Reference</p>
-                                <p className="font-medium text-xs">{schedule.WD_Invoice_Reference_ID__c}</p>
-                              </div>
-                            )} */}
-                          </div>
-                        )}
-
-                        {/* Invoice Details */}
-                        {editingScheduleId !== schedule.id && (
-                          <div className="space-y-3 p-4 bg-muted rounded-lg">
-                            <h4 className="text-xs font-semibold">Invoice Details</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                              <div>
-                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <p className="text-sm text-muted-foreground flex items-center gap-1">
                                   <FileText className="h-3 w-3" />
                                   Talent Amount
                                 </p>
-                                <p className="text-sm font-medium">{formatCurrency(schedule.Talent_Invoice_Line_Amount__c)}</p>
+                                <p className="text-base font-medium">{formatCurrency(schedule.Talent_Invoice_Line_Amount__c)}</p>
                               </div>
                               <div>
-                                <p className="text-xs text-muted-foreground">Wasserman Amount</p>
-                                <p className="text-sm font-medium">{formatCurrency(schedule.Wasserman_Invoice_Line_Amount__c)}</p>
+                                <p className="text-sm text-muted-foreground">Wasserman Amount</p>
+                                <p className="text-base font-medium">{formatCurrency(schedule.Wasserman_Invoice_Line_Amount__c)}</p>
                               </div>
                               <div>
-                                <p className="text-xs text-muted-foreground">Invoice ID</p>
-                                <p className="text-sm font-medium">{(schedule.WD_Invoice_ID__c && schedule.WD_Invoice_ID__c !== '') ? schedule.WD_Invoice_ID__c : '-'}</p>
+                                <p className="text-sm text-muted-foreground">Invoice ID</p>
+                                <p className="text-base font-medium">{(schedule.WD_Invoice_ID__c && schedule.WD_Invoice_ID__c !== '') ? schedule.WD_Invoice_ID__c : '-'}</p>
                               </div>
                               <div>
-                                <p className="text-xs text-muted-foreground">Payment Terms</p>
-                                <p className="text-sm font-medium">{(schedule.WD_Payment_Term__c && schedule.WD_Payment_Term__c !== '') ? schedule.WD_Payment_Term__c : '-'}</p>
+                                <p className="text-sm text-muted-foreground">Payment Status</p>
+                                <div className="text-base font-medium">{schedule.WD_Payment_Status__c ? getPaymentStatusBadge(schedule.WD_Payment_Status__c) : '-'}</div>
+                              </div>
+                            </div>
+                            <div className="space-y-4">
+                              <div>
+                                <p className="text-sm text-muted-foreground">Type</p>
+                                <p className="text-base font-medium">{schedule.Type || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Split %</p>
+                                <p className="text-base font-medium">
+                                  {schedule.ScheduleSplitPercent
+                                    ? `${schedule.ScheduleSplitPercent}%`
+                                    : calculateSplitPercent(schedule.Wasserman_Invoice_Line_Amount__c, schedule.Revenue)
+                                      ? `${calculateSplitPercent(schedule.Wasserman_Invoice_Line_Amount__c, schedule.Revenue)}%`
+                                      : '-'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Billable</p>
+                                <p className="text-base font-medium">{schedule.Billable !== undefined ? (schedule.Billable ? 'Yes' : 'No') : '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Payment Terms</p>
+                                <p className="text-base font-medium">{(schedule.WD_Payment_Term__c && schedule.WD_Payment_Term__c !== '') ? schedule.WD_Payment_Term__c : '-'}</p>
                               </div>
                             </div>
                           </div>
