@@ -319,6 +319,7 @@ export interface Product {
   ProductCode?: string
   Project_Deliverables__c?: string
   UnitPrice?: number
+  TotalPrice?: number | string
   Description?: string
   Workday_Company__c?: string
   Workday_Project_State__c?: string

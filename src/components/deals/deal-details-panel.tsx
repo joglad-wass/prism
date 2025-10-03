@@ -217,7 +217,7 @@ export function DealDetailsPanel({
                   <div className="p-4 border rounded-lg">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                       <TrendingUp className="h-4 w-4" />
-                      Marketing Fee
+                      Comission Fee
                     </div>
                     <div className="text-2xl font-bold">
                       {deal.Talent_Marketing_Fee_Percentage__c}%

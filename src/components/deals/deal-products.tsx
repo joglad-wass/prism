@@ -28,6 +28,7 @@ import {
   Package,
   DollarSign,
   Calendar,
+  CircleDollarSign,
   ExternalLink,
   Loader2,
   Edit,
@@ -242,7 +243,7 @@ export function DealProducts({ deal }: DealProductsProps) {
   }
 
   const formatCurrency = (amount?: number | string) => {
-    if (!amount) return 'N/A'
+    if (amount === undefined || amount === null || amount === '') return 'N/A'
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount
     if (isNaN(numAmount)) return 'N/A'
     return new Intl.NumberFormat('en-US', {
@@ -251,6 +252,19 @@ export function DealProducts({ deal }: DealProductsProps) {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(numAmount)
+  }
+
+  const getNumericValue = (value?: number | string | null) => {
+    if (value === undefined || value === null || value === '') return 0
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value)
+      return isNaN(parsed) ? 0 : parsed
+    }
+    return value
+  }
+
+  const getScheduleCommissionAmount = (schedule: { Wasserman_Invoice_Line_Amount__c?: number | string | null }) => {
+    return getNumericValue(schedule.Wasserman_Invoice_Line_Amount__c)
   }
 
 
@@ -268,11 +282,23 @@ export function DealProducts({ deal }: DealProductsProps) {
 
   const products = deal.products || []
   const totalProductValue = products.reduce((sum, product) => {
-    const unitPrice = typeof product.UnitPrice === 'string'
-      ? parseFloat(product.UnitPrice)
-      : (product.UnitPrice || 0)
-    return sum + (isNaN(unitPrice) ? 0 : unitPrice)
+    return sum + getNumericValue(product.TotalPrice ?? product.UnitPrice)
   }, 0)
+
+  const { totalUnpaidScheduleValue, totalUnpaidCommissionValue } = products.reduce((acc, product) => {
+    const schedules = product.schedules || []
+
+    schedules.forEach((schedule) => {
+      if (schedule.WD_Payment_Status__c?.toLowerCase() === 'paid') {
+        return
+      }
+
+      acc.totalUnpaidScheduleValue += getNumericValue(schedule.Revenue)
+      acc.totalUnpaidCommissionValue += getNumericValue(schedule.Wasserman_Invoice_Line_Amount__c)
+    })
+
+    return acc
+  }, { totalUnpaidScheduleValue: 0, totalUnpaidCommissionValue: 0 })
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A'
@@ -317,7 +343,7 @@ export function DealProducts({ deal }: DealProductsProps) {
     return scheduleAgentSplits.get(scheduleId) || []
   }
 
-  const initializeScheduleSplits = (scheduleId: string, scheduleAmount: number) => {
+  const initializeScheduleSplits = (scheduleId: string, commissionAmount: number) => {
     // Initialize with agents from the deal's talent clients
     const talentClientAgents = deal.clients
       ?.flatMap(dc => dc.talentClient?.agents || [])
@@ -334,7 +360,7 @@ export function DealProducts({ deal }: DealProductsProps) {
           return {
             agentName: talentAgent.agent?.name || 'Unknown Agent',
             splitPercent: Math.round(defaultPercent * 100) / 100,
-            splitAmount: Math.round((scheduleAmount * defaultPercent / 100) * 100) / 100,
+            splitAmount: Math.round((commissionAmount * defaultPercent / 100) * 100) / 100,
           }
         })
       : [
@@ -342,7 +368,7 @@ export function DealProducts({ deal }: DealProductsProps) {
           {
             agentName: deal.owner?.name || '',
             splitPercent: 100,
-            splitAmount: scheduleAmount,
+            splitAmount: commissionAmount,
           }
         ]
 
@@ -354,7 +380,7 @@ export function DealProducts({ deal }: DealProductsProps) {
     splitIndex: number,
     field: 'agentName' | 'splitPercent' | 'splitAmount',
     value: string | number,
-    scheduleAmount: number
+    commissionAmount: number
   ) => {
     const splits = getScheduleSplits(scheduleId)
     const newSplits = [...splits]
@@ -363,7 +389,7 @@ export function DealProducts({ deal }: DealProductsProps) {
       newSplits[splitIndex] = { ...newSplits[splitIndex], agentName: value as string }
     } else if (field === 'splitPercent') {
       const percent = parseFloat(value as string) || 0
-      const amount = Math.round((scheduleAmount * percent / 100) * 100) / 100
+      const amount = Math.round((commissionAmount * percent / 100) * 100) / 100
       newSplits[splitIndex] = {
         ...newSplits[splitIndex],
         splitPercent: percent,
@@ -371,7 +397,7 @@ export function DealProducts({ deal }: DealProductsProps) {
       }
     } else if (field === 'splitAmount') {
       const amount = parseFloat(value as string) || 0
-      const percent = scheduleAmount > 0 ? Math.round((amount / scheduleAmount * 100) * 100) / 100 : 0
+      const percent = commissionAmount > 0 ? Math.round((amount / commissionAmount * 100) * 100) / 100 : 0
       newSplits[splitIndex] = {
         ...newSplits[splitIndex],
         splitAmount: amount,
@@ -473,15 +499,18 @@ export function DealProducts({ deal }: DealProductsProps) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Schedules</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Unpaid Schedule Value</CardTitle>
+            <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {products.reduce((sum, product) => sum + (product.schedules?.length || 0), 0)}
+            <div className="text-2xl font-bold flex flex-wrap items-baseline gap-2">
+              <span>{formatCurrency(totalUnpaidScheduleValue)}</span>
+              <span className="text-sm font-medium text-muted-foreground">
+                ({formatCurrency(totalUnpaidCommissionValue)} commission)
+              </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Payment schedules
+              Awaiting payment
             </p>
           </CardContent>
         </Card>
@@ -725,7 +754,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="editWassermanAmount">Wasserman Amount</Label>
+                    <Label htmlFor="editWassermanAmount">Commission Amount</Label>
                     <Input
                       id="editWassermanAmount"
                       type="number"
@@ -759,7 +788,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="editSplitPercent">Split % (Wasserman)</Label>
+                    <Label htmlFor="editSplitPercent">Split % (Commission)</Label>
                     <Input
                       id="editSplitPercent"
                       type="number"
@@ -930,8 +959,9 @@ export function DealProducts({ deal }: DealProductsProps) {
                 <CardContent>
                   <div className="space-y-2">
                     {products.map((product) => {
+                      const productSchedules = product.schedules || []
                       const isExpanded = expandedProducts.has(product.id)
-                      const hasSchedules = product.schedules && product.schedules.length > 0
+                      const hasSchedules = productSchedules.length > 0
 
                       return (
                         <div key={product.id} className="space-y-1">
@@ -982,7 +1012,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                                   )}
                                   {hasSchedules && (
                                     <span className="text-xs text-muted-foreground">
-                                      {product.schedules?.length || 0} schedule{product.schedules?.length !== 1 ? 's' : ''}
+                                      {productSchedules.length} schedule{productSchedules.length !== 1 ? 's' : ''}
                                     </span>
                                   )}
                                 </div>
@@ -999,7 +1029,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                           {/* Schedules List (when expanded) */}
                           {isExpanded && hasSchedules && (
                             <div className="ml-6 space-y-1">
-                              {product.schedules?.map((schedule: any) => {
+                              {productSchedules.map((schedule: any) => {
                                 const isPaid = schedule.WD_Payment_Status__c?.toLowerCase() === 'paid'
                                 const isInvoiced = schedule.WD_Invoice_ID__c && schedule.WD_Invoice_ID__c !== ''
 
@@ -1026,7 +1056,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                                       <div className="flex-1">
                                         <div className="font-medium text-xs">{formatDate(schedule.ScheduleDate)}</div>
                                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                                          <span>{formatCurrency(schedule.Revenue ? Number(schedule.Revenue) : 0)}</span>
+                                          <span>{formatCurrency(getNumericValue(schedule.Revenue))}</span>
                                         </div>
                                       </div>
                                     </div>
@@ -1105,7 +1135,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                             </span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Wasserman</span>
+                            <span className="text-muted-foreground">Commission</span>
                             <span className="font-medium text-sm text-orange-600 dark:text-orange-400">
                               {formatCurrency(selectedSchedule.Wasserman_Invoice_Line_Amount__c ? Number(selectedSchedule.Wasserman_Invoice_Line_Amount__c) : 0)}
                             </span>
@@ -1215,6 +1245,17 @@ export function DealProducts({ deal }: DealProductsProps) {
                     <div className="space-y-6">
                       {(() => {
                         const activeProduct = selectedProductForView || products[0]
+                        const productSchedules = activeProduct.schedules || []
+                        const totalPrice = getNumericValue(activeProduct.TotalPrice ?? activeProduct.UnitPrice)
+                        const totalCommission = productSchedules.reduce((sum, schedule) => {
+                          return sum + getNumericValue(schedule.Wasserman_Invoice_Line_Amount__c)
+                        }, 0)
+                        const paidCommission = productSchedules.reduce((sum, schedule) => {
+                          return schedule.WD_Payment_Status__c?.toLowerCase() === 'paid'
+                            ? sum + getNumericValue(schedule.Wasserman_Invoice_Line_Amount__c)
+                            : sum
+                        }, 0)
+                        const unpaidCommission = Math.max(totalCommission - paidCommission, 0)
                         return (
                           <>
                             {/* Product Information */}
@@ -1244,14 +1285,26 @@ export function DealProducts({ deal }: DealProductsProps) {
                                     </Badge>
                                   </div>
                                 )}
-                                {activeProduct.UnitPrice !== undefined && (
+                                <div className="col-span-2 space-y-2">
                                   <div>
-                                    <div className="text-sm text-muted-foreground mb-1">Unit Price</div>
-                                    <div className="text-sm font-medium">
-                                      {formatCurrency(activeProduct.UnitPrice)}
+                                    <div className="text-sm text-muted-foreground mb-1">Total Price</div>
+                                    <div className="text-sm font-medium">{formatCurrency(totalPrice)}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-sm text-muted-foreground mb-1">Commission</div>
+                                    <div className="text-sm font-medium">{formatCurrency(totalCommission)}</div>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                                    <div className="flex items-center gap-2">
+                                      <span>Paid</span>
+                                      <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(paidCommission)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span>Unpaid</span>
+                                      <span className="font-medium text-orange-600 dark:text-orange-400">{formatCurrency(unpaidCommission)}</span>
                                     </div>
                                   </div>
-                                )}
+                                </div>
                               </div>
                             </div>
 
@@ -1338,7 +1391,8 @@ export function DealProducts({ deal }: DealProductsProps) {
                                     const status = getPaymentStatus(schedule)
                                     const isPaid = schedule.WD_Payment_Status__c?.toLowerCase() === 'paid'
                                     const isInvoiced = schedule.WD_Invoice_ID__c && schedule.WD_Invoice_ID__c !== ''
-                                    const scheduleAmount = schedule.Revenue ? Number(schedule.Revenue) : 0
+                                    const scheduleRevenue = getNumericValue(schedule.Revenue)
+                                    const commissionAmount = getScheduleCommissionAmount(schedule)
                                     const splits = getScheduleSplits(schedule.id)
                                     const splitTotal = getSplitTotal(schedule.id)
                                     const hasSplitWarning = splits.length > 0 && Math.abs(splitTotal - 100) > 0.01
@@ -1346,7 +1400,7 @@ export function DealProducts({ deal }: DealProductsProps) {
 
                                     // Initialize splits if not yet done
                                     if (!scheduleAgentSplits.has(schedule.id)) {
-                                      initializeScheduleSplits(schedule.id, scheduleAmount)
+                                      initializeScheduleSplits(schedule.id, commissionAmount)
                                     }
 
                                     return (
@@ -1369,7 +1423,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                                               <div>
                                                 <div className="text-sm font-medium">{formatDate(schedule.ScheduleDate)}</div>
                                                 <div className="text-xs text-muted-foreground">
-                                                  {formatCurrency(scheduleAmount)}
+                                                  {formatCurrency(scheduleRevenue)} revenue • {formatCurrency(commissionAmount)} commission
                                                 </div>
                                               </div>
                                             </div>
@@ -1385,7 +1439,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                                             <div className="flex items-center justify-between">
                                               <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
                                                 <Users className="h-3 w-3" />
-                                                Agent Splits
+                                                Commission Splits
                                               </h4>
                                               {hasSplitWarning && (
                                                 <span className="text-xs text-orange-600 dark:text-orange-400">
@@ -1415,7 +1469,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                                                             idx,
                                                             'agentName',
                                                             e.target.value,
-                                                            scheduleAmount
+                                                            commissionAmount
                                                           )
                                                         }}
                                                         onFocus={(e) => {
@@ -1444,7 +1498,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                                                                   idx,
                                                                   'agentName',
                                                                   agent.name,
-                                                                  scheduleAmount
+                                                                  commissionAmount
                                                                 )
                                                                 setShowAgentDropdown(null)
                                                                 setAgentSearchTerm('')
@@ -1474,7 +1528,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                                                               idx,
                                                               'splitPercent',
                                                               e.target.value,
-                                                              scheduleAmount
+                                                              commissionAmount
                                                             )
                                                           }}
                                                           onClick={(e) => e.stopPropagation()}
@@ -1501,7 +1555,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                                                               idx,
                                                               'splitAmount',
                                                               e.target.value,
-                                                              scheduleAmount
+                                                              commissionAmount
                                                             )
                                                           }}
                                                           onClick={(e) => e.stopPropagation()}
@@ -1526,7 +1580,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                                                           // If total is less than 100%, add an "Unassigned" split for the remainder
                                                           if (totalPercent < 100) {
                                                             const remainingPercent = Math.round((100 - totalPercent) * 100) / 100
-                                                            const remainingAmount = Math.round((scheduleAmount * remainingPercent / 100) * 100) / 100
+                                                            const remainingAmount = Math.round((commissionAmount * remainingPercent / 100) * 100) / 100
 
                                                             currentSplits = [
                                                               ...currentSplits,
@@ -1577,7 +1631,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                                                               idx,
                                                               'agentName',
                                                               editingSplitBackup.agentName,
-                                                              scheduleAmount
+                                                              commissionAmount
                                                             )
                                                             // Also restore percent and amount
                                                             const splits = getScheduleSplits(schedule.id)
