@@ -8,10 +8,13 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card'
-import { Settings, Users } from 'lucide-react'
+import { Settings, Users, UserCog } from 'lucide-react'
 import { CostCenterGroupManager } from '../../components/settings/cost-center-group-manager'
+import { UserManager } from '../../components/settings/user-manager'
+import { useUser } from '../../contexts/user-context'
 
 export default function SettingsPage() {
+  const { user } = useUser()
 
   return (
     <AppLayout>
@@ -29,6 +32,24 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* User Management - Admin Only */}
+        {user?.userType === 'ADMINISTRATOR' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserCog className="h-5 w-5" />
+                User Management
+              </CardTitle>
+              <CardDescription>
+                Manage user accounts, permissions, and cost center assignments
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UserManager />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Cost Center Groups */}
         <Card>
           <CardHeader>
@@ -37,11 +58,13 @@ export default function SettingsPage() {
               Cost Center Groups
             </CardTitle>
             <CardDescription>
-              Drag and drop cost centers to organize them into groups
+              {user?.userType === 'ADMINISTRATOR'
+                ? 'Drag and drop cost centers to organize them into groups'
+                : 'View cost center group organization'}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <CostCenterGroupManager />
+            <CostCenterGroupManager readOnly={user?.userType !== 'ADMINISTRATOR'} />
           </CardContent>
         </Card>
       </div>

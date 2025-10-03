@@ -2,6 +2,7 @@ import axios from 'axios'
 
 // API Client Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+const ACTIVE_USER_STORAGE_KEY = 'prism-active-user-id'
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
@@ -11,19 +12,31 @@ export const api = axios.create({
   timeout: 10000, // 10 seconds timeout
 })
 
-// Request interceptor for logging (development only)
-if (process.env.NODE_ENV === 'development') {
-  api.interceptors.request.use(
-    (config) => {
-      console.log(`🔄 API Request: ${config.method?.toUpperCase()} ${config.url}`)
-      return config
-    },
-    (error) => {
-      console.error('🔴 API Request Error:', error)
-      return Promise.reject(error)
+// Request interceptor to add user ID header
+api.interceptors.request.use(
+  (config) => {
+    // Add x-user-id header from localStorage
+    if (typeof window !== 'undefined') {
+      const activeUserId = window.localStorage.getItem(ACTIVE_USER_STORAGE_KEY)
+      if (activeUserId) {
+        config.headers['x-user-id'] = activeUserId
+      }
     }
-  )
-}
+
+    // Logging in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔄 API Request: ${config.method?.toUpperCase()} ${config.url}`)
+    }
+
+    return config
+  },
+  (error) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('🔴 API Request Error:', error)
+    }
+    return Promise.reject(error)
+  }
+)
 
 // Response interceptor for error handling
 api.interceptors.response.use(

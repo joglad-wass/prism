@@ -583,3 +583,81 @@ export interface AgentFilters {
   page?: number
   limit?: number
 }
+
+export interface Payment {
+  id: string
+  createdAt: string
+  updatedAt: string
+
+  // Core payment fields
+  workdayReferenceId?: string
+  customerPaymentForInvoicesReferenceId?: string
+  paymentNumber?: string
+  paymentAmount: number
+  paymentDate: string
+  paymentCurrency: string
+  paymentCurrencyNumericCode?: string
+  paymentCurrencyWid?: string
+  paymentType?: string
+  paymentTypeWid?: string
+  paymentStatus?: string
+  paymentApplicationStatus?: string
+  checkNumber?: string
+  paymentMemo?: string
+
+  // Company and Customer Information
+  companyReferenceId?: string
+  companyWid?: string
+  customerReferenceId?: string
+  customerWid?: string
+  customerId?: string
+
+  // Invoice Currency
+  invoiceCurrency?: string
+  invoiceCurrencyNumericCode?: string
+
+  // Customer Deposit
+  customerDepositReferenceId?: string
+  customerDepositWid?: string
+
+  // Control Flags
+  lockedInWorkday: boolean
+  readyToAutoApply: boolean
+  doNotApplyToInvoicesOnHold: boolean
+  showOnlyMatchedInvoices: boolean
+  currencyRateManualOverride: boolean
+
+  // Relationships
+  talentClientId?: string
+  talentClient?: TalentClient
+  brandId?: string
+  brand?: Brand
+  dealId?: string
+  deal?: Deal
+  paymentRemittances?: PaymentRemittance[]
+}
+
+export interface PaymentRemittance {
+  id: string
+  createdAt: string
+
+  // Payment reference
+  paymentId: string
+  payment?: Payment
+
+  // Invoice reference
+  customerInvoiceReferenceId?: string
+  customerInvoiceWid?: string
+
+  // Amount details
+  amountToPayInInvoiceCurrency?: number
+  amountToPay?: number
+
+  // Bill-to customer reference
+  billToCustomerReferenceId?: string
+  billToCustomerWid?: string
+  billToCustomerId?: string
+
+  // Related schedules
+  schedules?: Schedule[]
+}

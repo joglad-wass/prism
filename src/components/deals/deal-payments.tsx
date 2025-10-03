@@ -1,125 +1,42 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
-import { Button } from '../ui/button'
 import {
   CreditCard,
   Calendar,
   FileText,
   Loader2,
-  Building2,
   Hash,
   Banknote,
-  ChevronDown,
-  ChevronUp
+  DollarSign,
+  Receipt
 } from 'lucide-react'
-import { Deal } from '../../types'
+import { Deal, Payment, PaymentRemittance } from '../../types'
+import { usePaymentsByDeal } from '../../hooks/usePayments'
 
 interface DealPaymentsProps {
   deal: Deal
+  highlightedPaymentId?: string
+  onNavigateToSchedule?: (scheduleId: string) => void
 }
 
-interface Payment {
-  id: string
-  workdayReferenceId: string
-  paymentNumber: string
-  paymentAmount: string
-  paymentDate: string
-  paymentCurrency: string
-  paymentCurrencyNumericCode: string
-  paymentType: string
-  paymentStatus: string
-  paymentApplicationStatus: string
-  paymentMemo?: string
-  checkNumber?: string
-  companyReferenceId: string
-  companyWid: string
-  customerReferenceId: string
-  customerWid: string
-  customerId: string
-  invoiceCurrency: string
-  invoiceCurrencyNumericCode: string
-  customerDepositReferenceId?: string
-  customerDepositWid?: string
-  lockedInWorkday: boolean
-  readyToAutoApply: boolean
-  doNotApplyToInvoicesOnHold: boolean
-  showOnlyMatchedInvoices: boolean
-  currencyRateManualOverride: boolean
-  paymentRemittances: PaymentRemittance[]
-}
+export function DealPayments({ deal, highlightedPaymentId, onNavigateToSchedule }: DealPaymentsProps) {
+  const { data: payments, isLoading } = usePaymentsByDeal(deal.id)
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
+  const router = useRouter()
 
-interface PaymentRemittance {
-  id: string
-  customerInvoiceReferenceId: string
-  customerInvoiceWid: string
-  amountToPay: string
-  amountToPayInInvoiceCurrency: string
-  billToCustomerReferenceId: string
-  billToCustomerWid: string
-  billToCustomerId: string
-  schedules: Schedule[]
-}
-
-interface Schedule {
-  id: string
-  name: string
-  amount: string
-  ScheduleDate: string
-  scheduleStatus: string
-  paymentStatus: string
-  WD_Invoice_Reference_ID__c?: string
-}
-
-export function DealPayments({ deal }: DealPaymentsProps) {
-  const [payments, setPayments] = useState<Payment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [expandedPayments, setExpandedPayments] = useState<Set<string>>(new Set())
-
+  // Handle highlighted payment from external navigation (e.g., from products tab)
   useEffect(() => {
-    const fetchPaymentData = async () => {
-      try {
-        setLoading(true)
-
-        // First, fetch schedules for this deal to get their invoice reference IDs
-        const schedulesResponse = await fetch(`http://localhost:3001/api/schedules/by-deal/${deal.id}`)
-        const schedulesData = await schedulesResponse.json()
-        const schedules = schedulesData.data || []
-
-        // Get all invoice reference IDs from schedules
-        const invoiceRefIds = schedules
-          .filter(s => s.WD_Invoice_Reference_ID__c)
-          .map(s => s.WD_Invoice_Reference_ID__c)
-
-        if (invoiceRefIds.length === 0) {
-          setPayments([])
-          return
-        }
-
-        // Fetch all payments and filter those with matching remittances
-        const paymentsResponse = await fetch(`http://localhost:3001/api/payments`)
-        const paymentsData = await paymentsResponse.json()
-        const allPayments = paymentsData.data || []
-
-        // Filter payments that have remittances matching our deal's schedule invoice references
-        const relatedPayments = allPayments.filter(payment =>
-          payment.paymentRemittances.some(remittance =>
-            invoiceRefIds.includes(remittance.customerInvoiceReferenceId)
-          )
-        )
-
-        setPayments(relatedPayments)
-      } catch (error) {
-        console.error('Error fetching payment data:', error)
-      } finally {
-        setLoading(false)
+    if (highlightedPaymentId && payments) {
+      const payment = payments.find(p => p.id === highlightedPaymentId)
+      if (payment) {
+        setSelectedPayment(payment)
       }
     }
-
-    fetchPaymentData()
-  }, [deal.id])
+  }, [highlightedPaymentId, payments])
 
   const formatCurrency = (amount: string | number) => {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount
@@ -140,10 +57,13 @@ export function DealPayments({ deal }: DealPaymentsProps) {
     })
   }
 
-  const getPaymentStatusBadge = (status: string) => {
+  const getPaymentStatusBadge = (status?: string) => {
+    if (!status) return <Badge variant="outline">Unknown</Badge>
+
     switch (status.toLowerCase()) {
       case 'complete':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Complete</Badge>
+      case 'completed':
+        return <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">Complete</Badge>
       case 'pending':
         return <Badge variant="secondary">Pending</Badge>
       case 'failed':
@@ -153,34 +73,19 @@ export function DealPayments({ deal }: DealPaymentsProps) {
     }
   }
 
-  const getScheduleStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'paid':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Paid</Badge>
-      case 'pending':
-        return <Badge variant="secondary">Pending</Badge>
-      case 'overdue':
-        return <Badge variant="destructive">Overdue</Badge>
-      case 'sent_to_workday':
-        return <Badge variant="outline">Sent to Workday</Badge>
-      default:
-        return <Badge variant="outline">{status}</Badge>
+  const getScheduleStatusBadge = (schedule: any) => {
+    const status = schedule.WD_Payment_Status__c?.toLowerCase()
+
+    if (status === 'paid') {
+      return <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">Paid</Badge>
     }
+    if (schedule.WD_Invoice_ID__c) {
+      return <Badge variant="secondary">Invoiced</Badge>
+    }
+    return <Badge variant="outline">Pending</Badge>
   }
 
-  const togglePaymentExpanded = (paymentId: string) => {
-    setExpandedPayments(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(paymentId)) {
-        newSet.delete(paymentId)
-      } else {
-        newSet.add(paymentId)
-      }
-      return newSet
-    })
-  }
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="flex items-center gap-2">
@@ -191,239 +96,255 @@ export function DealPayments({ deal }: DealPaymentsProps) {
     )
   }
 
+  if (!payments || payments.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-8">
+            <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="font-semibold text-lg mb-2">No Payments Found</h3>
+            <p className="text-muted-foreground">
+              No payments have been linked to this deal's schedules yet.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Auto-select first payment if none selected
+  const activePayment = selectedPayment || payments[0]
+
   return (
-    <div className="space-y-6">
-      {payments.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">No Payments Found</h3>
-              <p className="text-muted-foreground">
-                No payments have been linked to this deal yet.
-              </p>
+    <div className="grid gap-6 lg:grid-cols-3">
+      {/* Left: Payments List */}
+      <Card className="lg:col-span-1">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Payments ({payments.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {payments.map((payment) => (
+              <div
+                key={payment.id}
+                className={`p-3 border rounded-lg transition-colors cursor-pointer ${
+                  activePayment?.id === payment.id
+                    ? 'bg-primary/10 border-primary'
+                    : 'hover:bg-muted/50'
+                }`}
+                onClick={() => setSelectedPayment(payment)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">
+                      Payment #{payment.paymentNumber || payment.id.slice(0, 8)}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {formatDate(payment.paymentDate)}
+                    </div>
+                    <div className="text-sm font-semibold text-green-600 dark:text-green-400 mt-1">
+                      {formatCurrency(payment.paymentAmount)}
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0">
+                    {getPaymentStatusBadge(payment.paymentStatus)}
+                  </div>
+                </div>
+                {payment.paymentType && (
+                  <div className="text-xs text-muted-foreground mt-2">
+                    {payment.paymentType}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Right: Payment Details */}
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Payment #{activePayment.paymentNumber || activePayment.id.slice(0, 8)}
+              </CardTitle>
+              <CardDescription className="mt-1">
+                {activePayment.paymentType} • {formatDate(activePayment.paymentDate)}
+              </CardDescription>
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6">
-          {payments.map((payment) => {
-            const isExpanded = expandedPayments.has(payment.id)
-            return (
-              <Card key={payment.id} className="hover:shadow-md transition-shadow">
-                <CardHeader
-                  className="cursor-pointer"
-                  onClick={() => togglePaymentExpanded(payment.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <CreditCard className="h-5 w-5" />
-                        Payment #{payment.paymentNumber}
-                      </CardTitle>
-                      <CardDescription>
-                        {payment.paymentType} • {formatDate(payment.paymentDate)}
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-green-600">
-                          {formatCurrency(payment.paymentAmount)}
+            <div className="text-right">
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                {formatCurrency(activePayment.paymentAmount)}
+              </div>
+              {getPaymentStatusBadge(activePayment.paymentStatus)}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Payment Details Grid */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold">Payment Details</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Banknote className="h-3 w-3" />
+                  Currency
+                </p>
+                <p className="font-medium text-sm">{activePayment.paymentCurrency}</p>
+              </div>
+              {activePayment.paymentApplicationStatus && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Application Status</p>
+                  <p className="font-medium text-sm">{activePayment.paymentApplicationStatus}</p>
+                </div>
+              )}
+              {activePayment.checkNumber && (
+                <div>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Hash className="h-3 w-3" />
+                    Check Number
+                  </p>
+                  <p className="font-medium text-sm">{activePayment.checkNumber}</p>
+                </div>
+              )}
+              {activePayment.companyReferenceId && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Company Reference</p>
+                  <p className="font-medium text-xs break-all">{activePayment.companyReferenceId}</p>
+                </div>
+              )}
+              {activePayment.customerId && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Customer ID</p>
+                  <p className="font-medium text-sm">{activePayment.customerId}</p>
+                </div>
+              )}
+              {activePayment.paymentMemo && (
+                <div className="col-span-2 md:col-span-3">
+                  <p className="text-sm text-muted-foreground">Memo</p>
+                  <p className="font-medium text-sm">{activePayment.paymentMemo}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Payment Flags */}
+          {(activePayment.lockedInWorkday || activePayment.doNotApplyToInvoicesOnHold || activePayment.showOnlyMatchedInvoices || activePayment.currencyRateManualOverride) && (
+            <div className="flex flex-wrap gap-2">
+              {activePayment.lockedInWorkday && (
+                <Badge variant="outline" className="text-xs">
+                  Locked in Workday
+                </Badge>
+              )}
+              {activePayment.doNotApplyToInvoicesOnHold && (
+                <Badge variant="outline" className="text-xs">
+                  Skip Invoices on Hold
+                </Badge>
+              )}
+              {activePayment.showOnlyMatchedInvoices && (
+                <Badge variant="outline" className="text-xs">
+                  Matched Invoices Only
+                </Badge>
+              )}
+              {activePayment.currencyRateManualOverride && (
+                <Badge variant="outline" className="text-xs">
+                  Manual Currency Rate
+                </Badge>
+              )}
+            </div>
+          )}
+
+          {/* Payment Remittances */}
+          {activePayment.paymentRemittances && activePayment.paymentRemittances.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Payment Remittances ({activePayment.paymentRemittances.length})
+              </h3>
+              <div className="space-y-4">
+                {activePayment.paymentRemittances.map((remittance: PaymentRemittance) => (
+                  <div key={remittance.id} className="border rounded-lg p-4 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {remittance.amountToPay !== undefined && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Amount to Pay</p>
+                          <p className="font-semibold text-green-600 dark:text-green-400">
+                            {formatCurrency(remittance.amountToPay)}
+                          </p>
                         </div>
-                        {getPaymentStatusBadge(payment.paymentStatus)}
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        {isExpanded ? (
-                          <ChevronUp className="h-4 w-4" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4" />
-                        )}
-                      </Button>
+                      )}
+                      {remittance.billToCustomerId && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Bill To Customer</p>
+                          <p className="font-medium text-sm">{remittance.billToCustomerId}</p>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </CardHeader>
-                {isExpanded && (
-                  <CardContent className="space-y-6">
-                {/* Payment Details Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Banknote className="h-3 w-3" />
-                      Currency
-                    </p>
-                    <p className="font-medium">{payment.paymentCurrency} ({payment.paymentCurrencyNumericCode})</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Application Status</p>
-                    <p className="font-medium">{payment.paymentApplicationStatus}</p>
-                  </div>
-                  {payment.checkNumber && (
-                    <div>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Hash className="h-3 w-3" />
-                        Check Number
-                      </p>
-                      <p className="font-medium">{payment.checkNumber}</p>
-                    </div>
-                  )}
-                  {payment.paymentMemo && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Memo</p>
-                      <p className="font-medium">{payment.paymentMemo}</p>
-                    </div>
-                  )}
-                </div>
 
-                {/* Workday References */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
-                  <div>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Building2 className="h-3 w-3" />
-                      Workday Reference
-                    </p>
-                    <p className="font-medium text-xs">{payment.workdayReferenceId}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Company Reference</p>
-                    <p className="font-medium text-xs">{payment.companyReferenceId}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Customer ID</p>
-                    <p className="font-medium">{payment.customerId}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Customer Reference</p>
-                    <p className="font-medium text-xs">{payment.customerReferenceId}</p>
-                  </div>
-                  {payment.customerDepositReferenceId && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Deposit Reference</p>
-                      <p className="font-medium text-xs">{payment.customerDepositReferenceId}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm text-muted-foreground">Invoice Currency</p>
-                    <p className="font-medium">{payment.invoiceCurrency} ({payment.invoiceCurrencyNumericCode})</p>
-                  </div>
-                </div>
-
-                {/* Payment Flags */}
-                <div className="flex flex-wrap gap-2">
-                  {payment.lockedInWorkday && (
-                    <Badge variant="outline" className="text-xs">
-                      Locked in Workday
-                    </Badge>
-                  )}
-                  {payment.readyToAutoApply && (
-                    <Badge variant="outline" className="text-xs">
-                      Ready to Auto Apply
-                    </Badge>
-                  )}
-                  {payment.doNotApplyToInvoicesOnHold && (
-                    <Badge variant="outline" className="text-xs">
-                      Skip Invoices on Hold
-                    </Badge>
-                  )}
-                  {payment.showOnlyMatchedInvoices && (
-                    <Badge variant="outline" className="text-xs">
-                      Matched Invoices Only
-                    </Badge>
-                  )}
-                  {payment.currencyRateManualOverride && (
-                    <Badge variant="outline" className="text-xs">
-                      Manual Currency Rate
-                    </Badge>
-                  )}
-                </div>
-
-                {/* Payment Remittances */}
-                {payment.paymentRemittances.length > 0 && (
-                  <div className="border-t pt-4">
-                    <h4 className="font-semibold mb-3 flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      Payment Remittances ({payment.paymentRemittances.length})
-                    </h4>
-                    <div className="space-y-4">
-                      {payment.paymentRemittances.map((remittance) => (
-                        <div key={remittance.id} className="border rounded-lg p-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                            <div>
-                              <p className="text-sm text-muted-foreground">Invoice Reference</p>
-                              <p className="font-medium text-sm">{remittance.customerInvoiceReferenceId}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Amount to Pay</p>
-                              <p className="font-semibold text-green-600">
-                                {formatCurrency(remittance.amountToPay)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Bill To Customer</p>
-                              <p className="font-medium">{remittance.billToCustomerId}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Invoice WID</p>
-                              <p className="font-medium text-xs">{remittance.customerInvoiceWid}</p>
-                            </div>
-                          </div>
-
-                          {/* Linked Schedules */}
-                          {remittance.schedules.length > 0 && (
-                            <div className="mt-4 pt-4 border-t">
-                              <h5 className="font-medium mb-2 flex items-center gap-2">
-                                <Calendar className="h-4 w-4" />
-                                Linked Schedules ({remittance.schedules.length})
-                              </h5>
-                              <div className="space-y-2">
-                                {remittance.schedules.map((schedule) => (
-                                  <div key={schedule.id} className="bg-muted p-3 rounded">
-                                    <div className="flex justify-between items-start mb-2">
-                                      <div>
-                                        <p className="font-medium text-sm">{schedule.name}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                          Due: {formatDate(schedule.ScheduleDate)}
-                                        </p>
-                                      </div>
-                                      <div className="text-right">
-                                        <p className="font-semibold text-sm">
-                                          {formatCurrency(schedule.amount)}
-                                        </p>
-                                        <div className="flex gap-1 mt-1">
-                                          {getScheduleStatusBadge(schedule.scheduleStatus)}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                      <div>
-                                        <span className="text-muted-foreground">Payment Status:</span>
-                                        <span className="ml-1 font-medium">{schedule.paymentStatus}</span>
-                                      </div>
-                                      {schedule.WD_Invoice_Reference_ID__c && (
-                                        <div>
-                                          <span className="text-muted-foreground">Invoice Ref:</span>
-                                          <span className="ml-1 font-medium text-xs">
-                                            {schedule.WD_Invoice_Reference_ID__c}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
+                    {/* Linked Schedules */}
+                    {remittance.schedules && remittance.schedules.length > 0 && (
+                      <div className="pt-4 border-t">
+                        <h4 className="font-medium mb-3 flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Linked Schedules ({remittance.schedules.length})
+                        </h4>
+                        <div className="space-y-2">
+                          {remittance.schedules.map((schedule) => (
+                            <div
+                              key={schedule.id}
+                              className="bg-muted p-3 rounded flex items-center justify-between hover:bg-muted/70 cursor-pointer transition-colors"
+                              onClick={() => {
+                                if (onNavigateToSchedule) {
+                                  onNavigateToSchedule(schedule.id)
+                                }
+                              }}
+                            >
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  {schedule.WD_Invoice_ID__c && (
+                                    <Receipt className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                                  )}
+                                  {schedule.WD_Payment_Status__c?.toLowerCase() === 'paid' && (
+                                    <DollarSign className="h-3 w-3 text-green-600 dark:text-green-400" />
+                                  )}
+                                  <p className="font-medium text-sm">{formatDate(schedule.ScheduleDate || '')}</p>
+                                </div>
+                                {schedule.Description && (
+                                  <p className="text-xs text-muted-foreground mt-1">{schedule.Description}</p>
+                                )}
+                                <div className="flex items-center gap-4 mt-2 text-xs">
+                                  <div>
+                                    <span className="text-muted-foreground">Revenue: </span>
+                                    <span className="font-medium">{formatCurrency(schedule.Revenue || 0)}</span>
                                   </div>
-                                ))}
+                                  {schedule.Wasserman_Invoice_Line_Amount__c !== undefined && (
+                                    <div>
+                                      <span className="text-muted-foreground">Commission: </span>
+                                      <span className="font-medium">{formatCurrency(schedule.Wasserman_Invoice_Line_Amount__c)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="ml-4">
+                                {getScheduleStatusBadge(schedule)}
                               </div>
                             </div>
-                          )}
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
                   </div>
-                )}
-                  </CardContent>
-                )}
-              </Card>
-            )
-          })}
-        </div>
-      )}
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

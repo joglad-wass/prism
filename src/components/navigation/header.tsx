@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import {
@@ -25,6 +26,8 @@ import {
   Sun,
   Moon,
   Monitor,
+  ArrowLeftRight,
+  Check,
 } from 'lucide-react'
 import { useTheme } from '../../contexts/theme-context'
 import { useUser } from '../../contexts/user-context'
@@ -33,7 +36,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 export function Header() {
   const router = useRouter()
   const { setTheme, theme } = useTheme()
-  const { user } = useUser()
+  const { user, availableUsers, activeUserId, switchUser } = useUser()
+  const [switchingUserId, setSwitchingUserId] = useState<string | null>(null)
 
   const getInitials = (name: string) => {
     return name
@@ -72,6 +76,22 @@ export function Header() {
         break
     }
   }
+
+  const handleSwitchUser = async (userId: string) => {
+    if (userId === activeUserId) return
+
+    try {
+      setSwitchingUserId(userId)
+      await switchUser(userId)
+    } catch (error) {
+      console.error('Failed to switch user:', error)
+    } finally {
+      setSwitchingUserId(null)
+    }
+  }
+
+  const currentUserOption = availableUsers.find((candidate) => candidate.id === activeUserId)
+  const switchableUsers = availableUsers.filter((candidate) => candidate.id !== activeUserId)
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-background px-6">
@@ -125,6 +145,53 @@ export function Header() {
               <Settings className="mr-2 h-4 w-4" />
               Settings
             </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="w-56">
+                <ArrowLeftRight className="mr-2 h-4 w-4" />
+                Switch user
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="max-h-64 overflow-y-auto">
+                {currentUserOption && (
+                  <DropdownMenuItem disabled className="cursor-default opacity-80">
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex flex-col text-left">
+                        <span className="text-sm font-medium">{currentUserOption.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          Current user · {currentUserOption.userType === 'ADMINISTRATOR' ? 'Administrator' : 'Agent'}
+                        </span>
+                      </div>
+                      <Check className="h-4 w-4 text-primary" />
+                    </div>
+                  </DropdownMenuItem>
+                )}
+                {currentUserOption && switchableUsers.length > 0 && <DropdownMenuSeparator />}
+                {switchableUsers.length === 0 ? (
+                  <DropdownMenuItem disabled>
+                    No other users available
+                  </DropdownMenuItem>
+                ) : (
+                  switchableUsers.map((candidate) => (
+                    <DropdownMenuItem
+                      key={candidate.id}
+                      onClick={() => handleSwitchUser(candidate.id)}
+                      disabled={switchingUserId !== null}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">{candidate.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {candidate.userType === 'ADMINISTRATOR' ? 'Administrator' : 'Agent'}
+                          </span>
+                        </div>
+                        {switchingUserId === candidate.id && (
+                          <div className="h-4 w-4 animate-spin border-2 border-muted border-t-transparent rounded-full" />
+                        )}
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger align="end"className="w-56">
                 <div className="mr-2 h-4 w-6">

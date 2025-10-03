@@ -49,7 +49,11 @@ interface DraggableCostCenter {
   sourceGroupId?: string
 }
 
-export function CostCenterGroupManager() {
+interface CostCenterGroupManagerProps {
+  readOnly?: boolean
+}
+
+export function CostCenterGroupManager({ readOnly = false }: CostCenterGroupManagerProps) {
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [activeDrag, setActiveDrag] = useState<DraggableCostCenter | null>(null)
@@ -219,13 +223,22 @@ export function CostCenterGroupManager() {
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="grid grid-cols-2 gap-6">
+    <div>
+      {readOnly && (
+        <div className="mb-4 p-3 bg-muted/50 rounded-lg border border-muted">
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            You are viewing cost center groups in read-only mode. Contact an administrator to make changes.
+          </p>
+        </div>
+      )}
+      <DndContext
+        sensors={readOnly ? [] : sensors}
+        collisionDetection={closestCenter}
+        onDragStart={readOnly ? undefined : handleDragStart}
+        onDragEnd={readOnly ? undefined : handleDragEnd}
+      >
+        <div className="grid grid-cols-2 gap-6">
         {/* Left Panel - Groups */}
         <div className="border rounded-lg p-4">
           <div className="flex items-center justify-between mb-4">
@@ -233,13 +246,14 @@ export function CostCenterGroupManager() {
               <Users className="h-5 w-5" />
               Cost Center Groups
             </h3>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Group
-                </Button>
-              </DialogTrigger>
+            {!readOnly && (
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Group
+                  </Button>
+                </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create New Group</DialogTitle>
@@ -275,6 +289,7 @@ export function CostCenterGroupManager() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            )}
           </div>
 
           <Accordion type="multiple" className="w-full">
@@ -294,7 +309,7 @@ export function CostCenterGroupManager() {
                       </div>
                     </div>
                   </AccordionTrigger>
-                  {group.pattern && (
+                  {!readOnly && group.pattern && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -321,7 +336,11 @@ export function CostCenterGroupManager() {
                     <div className="space-y-1">
                       {group.costCenters.length === 0 ? (
                         <div className="text-sm text-muted-foreground text-center py-4">
-                          {group.pattern ? "No matching cost centers" : "Drag cost centers here"}
+                          {group.pattern
+                            ? "No matching cost centers"
+                            : readOnly
+                            ? "No cost centers in this group"
+                            : "Drag cost centers here"}
                         </div>
                       ) : (
                         group.costCenters.map((cc) => (
@@ -329,7 +348,7 @@ export function CostCenterGroupManager() {
                             key={cc}
                             id={cc}
                             name={trimCostCenterName(cc)}
-                            isDraggable={!group.pattern}
+                            isDraggable={!group.pattern && !readOnly}
                           />
                         ))
                       )}
@@ -367,7 +386,7 @@ export function CostCenterGroupManager() {
                     key={cc}
                     id={cc}
                     name={trimCostCenterName(cc)}
-                    isDraggable={true}
+                    isDraggable={!readOnly}
                   />
                 ))
               )}
@@ -385,6 +404,7 @@ export function CostCenterGroupManager() {
         )}
       </DragOverlay>
     </DndContext>
+    </div>
   )
 }
 

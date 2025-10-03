@@ -39,6 +39,7 @@ import {
   X,
   Check,
   Trash2,
+  CreditCard,
 } from 'lucide-react'
 import { Deal, Product, Schedule } from '../../types'
 import { useUpdateProduct } from '../../hooks/useProducts'
@@ -51,9 +52,11 @@ import { scheduleKeys } from '../../hooks/useSchedules'
 
 interface DealProductsProps {
   deal: Deal
+  highlightedScheduleId?: string
+  onNavigateToPayment?: (paymentId: string) => void
 }
 
-export function DealProducts({ deal }: DealProductsProps) {
+export function DealProducts({ deal, highlightedScheduleId, onNavigateToPayment }: DealProductsProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -122,6 +125,24 @@ export function DealProducts({ deal }: DealProductsProps) {
     filterSelection.type === 'group' ? filterSelection.value || undefined : undefined,
     4 // Show 3-4 agents as requested
   )
+
+  // Handle highlighted schedule from external navigation (e.g., from payments tab)
+  useEffect(() => {
+    if (highlightedScheduleId && deal.products) {
+      // Find the schedule and its product
+      for (const product of deal.products) {
+        const schedule = product.schedules?.find(s => s.id === highlightedScheduleId)
+        if (schedule) {
+          // Expand the product
+          setExpandedProducts(prev => new Set(prev).add(product.id))
+          // Select the schedule
+          setSelectedSchedule({ ...schedule, product })
+          setSelectedProductForView(null)
+          break
+        }
+      }
+    }
+  }, [highlightedScheduleId, deal.products])
 
   const handleCreateWorkdayProject = () => {
     // Future: Implement Workday project creation
@@ -1036,6 +1057,7 @@ export function DealProducts({ deal }: DealProductsProps) {
                                 return (
                                   <div
                                     key={schedule.id}
+                                    id={`schedule-${schedule.id}`}
                                     className={`p-2 pl-4 border-l-2 rounded cursor-pointer transition-colors ${
                                       selectedSchedule?.id === schedule.id
                                         ? 'bg-primary/10 border-l-primary'
@@ -1213,27 +1235,67 @@ export function DealProducts({ deal }: DealProductsProps) {
 
                       <Separator />
 
-                      {/* Associated Product Info */}
+                      {/* Payment Details */}
                       <div className="space-y-4">
-                        <h3 className="text-sm font-semibold">Associated Product</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <div className="text-sm text-muted-foreground mb-1">Deliverables</div>
-                            <div className="text-sm font-medium">{selectedSchedule.product.Project_Deliverables__c || 'N/A'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-muted-foreground mb-1">Product Name</div>
-                            <div className="text-sm font-medium">{selectedSchedule.product.Product_Name__c || 'N/A'}</div>
-                          </div>
-                          {selectedSchedule.product.ProductCode && (
-                            <div>
-                              <div className="text-sm text-muted-foreground mb-1">Cost Center</div>
-                              <Badge variant="outline" className="text-xs">
-                                {selectedSchedule.product.ProductCode}
-                              </Badge>
+                        <h3 className="text-sm font-semibold flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          Payment Details
+                        </h3>
+                        {selectedSchedule.paymentRemittance?.payment ? (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <div className="text-sm text-muted-foreground mb-1">Payment Number</div>
+                                <div className="text-sm font-medium">
+                                  {selectedSchedule.paymentRemittance.payment.paymentNumber || selectedSchedule.paymentRemittance.payment.id.slice(0, 8)}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-sm text-muted-foreground mb-1">Payment Amount</div>
+                                <div className="text-sm font-semibold text-green-600 dark:text-green-400">
+                                  {formatCurrency(selectedSchedule.paymentRemittance.payment.paymentAmount || 0)}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-sm text-muted-foreground mb-1">Payment Date</div>
+                                <div className="text-sm font-medium">
+                                  {formatDate(selectedSchedule.paymentRemittance.payment.paymentDate)}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-sm text-muted-foreground mb-1">Payment Status</div>
+                                <Badge variant="outline" className="text-xs">
+                                  {selectedSchedule.paymentRemittance.payment.paymentStatus || 'Unknown'}
+                                </Badge>
+                              </div>
+                              {selectedSchedule.paymentRemittance.payment.paymentType && (
+                                <div>
+                                  <div className="text-sm text-muted-foreground mb-1">Payment Type</div>
+                                  <div className="text-sm font-medium">
+                                    {selectedSchedule.paymentRemittance.payment.paymentType}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => {
+                                if (onNavigateToPayment && selectedSchedule.paymentRemittance?.payment) {
+                                  onNavigateToPayment(selectedSchedule.paymentRemittance.payment.id)
+                                }
+                              }}
+                            >
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              View Full Payment Details
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground p-4 bg-muted/50 rounded-lg text-center">
+                            No payment linked to this schedule yet
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : !selectedProductForView && !products[0] ? (

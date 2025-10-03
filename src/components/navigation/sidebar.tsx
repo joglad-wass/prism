@@ -5,8 +5,6 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { cn } from '../../lib/utils'
-import { Button } from '../ui/button'
-import { GlobalSearch } from '../search/global-search'
 import { useTheme } from '../../contexts/theme-context'
 import { CostCenterSelector } from './cost-center-selector'
 import {
@@ -14,7 +12,6 @@ import {
   Building2,
   UserCheck,
   Briefcase,
-  Search,
   Home,
   BarChart3
 } from 'lucide-react'
@@ -104,21 +101,6 @@ export function Sidebar() {
           )
         })}
       </nav>
-
-      {/* Search Button */}
-      <div className="p-3">
-        <GlobalSearch
-          trigger={
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-            >
-              <Search className="mr-2 h-4 w-4" />
-              Search...
-            </Button>
-          }
-        />
-      </div>
     </div>
   )
 }

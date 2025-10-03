@@ -1,6 +1,7 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useUser } from './user-context'
 
 type FilterType = 'all' | 'group' | 'individual'
 
@@ -35,26 +36,91 @@ export function FilterProvider({
   storageKey = 'prism-cost-center-filter',
   ...props
 }: FilterProviderProps) {
-  const [filterSelection, setFilterSelection] = useState<FilterSelection>({ type: 'all', value: null })
+  const [filterSelection, setFilterSelectionState] = useState<FilterSelection>({ type: 'all', value: null })
   const [mounted, setMounted] = useState(false)
+  const { user, isLoading: isUserLoading } = useUser()
+
+  const effectiveStorageKey = useMemo(() => {
+    return user?.id ? `${storageKey}:${user.id}` : storageKey
+  }, [storageKey, user?.id])
+
+  const getDefaultSelection = useCallback((): FilterSelection => {
+    if (!user || !user.defaultFilterType) {
+      return { type: 'all', value: null }
+    }
+
+    switch (user.defaultFilterType) {
+      case 'group':
+      case 'individual':
+        return {
+          type: user.defaultFilterType as FilterType,
+          value: user.defaultFilterValue,
+        }
+      case 'all':
+      default:
+        return { type: 'all', value: null }
+    }
+  }, [user?.defaultFilterType, user?.defaultFilterValue])
+
+  const isSelectionAllowed = useCallback((selection: FilterSelection) => {
+    if (!user) return true
+    if (user.userType === 'ADMINISTRATOR') return true
+
+    const defaultSelection = getDefaultSelection()
+
+    return (
+      selection.type === defaultSelection.type &&
+      selection.value === defaultSelection.value
+    )
+  }, [getDefaultSelection, user?.userType])
 
   // Get initial filter from localStorage after component mounts
   useEffect(() => {
-    const savedFilter = localStorage?.getItem(storageKey)
+    if (mounted && isUserLoading) {
+      return
+    }
+
+    const savedFilter = typeof window !== 'undefined'
+      ? window.localStorage.getItem(effectiveStorageKey)
+      : null
+
+    let initialSelection: FilterSelection | null = null
+
     if (savedFilter) {
       try {
         const parsed = JSON.parse(savedFilter) as FilterSelection
-        setFilterSelection(parsed)
+        if (parsed && parsed.type && isSelectionAllowed(parsed)) {
+          initialSelection = parsed
+        }
       } catch {
-        // Backward compatibility: handle old string format
-        setFilterSelection(savedFilter === 'all'
-          ? { type: 'all', value: null }
-          : { type: 'individual', value: savedFilter }
-        )
+        if (savedFilter === 'all') {
+          initialSelection = { type: 'all', value: null }
+        } else {
+          initialSelection = { type: 'individual', value: savedFilter }
+        }
       }
     }
-    setMounted(true)
-  }, [storageKey])
+
+    if (!initialSelection) {
+      initialSelection = getDefaultSelection()
+    }
+
+    setFilterSelectionState(initialSelection)
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(effectiveStorageKey, JSON.stringify(initialSelection))
+    }
+
+    if (!mounted) {
+      setMounted(true)
+    }
+  }, [
+    effectiveStorageKey,
+    isUserLoading,
+    mounted,
+    getDefaultSelection,
+    isSelectionAllowed,
+  ])
 
   const value = {
     selectedCostCenter: filterSelection.type === 'individual' ? filterSelection.value : null,
@@ -63,12 +129,20 @@ export function FilterProvider({
       const selection: FilterSelection = costCenter
         ? { type: 'individual', value: costCenter }
         : { type: 'all', value: null }
-      localStorage?.setItem(storageKey, JSON.stringify(selection))
-      setFilterSelection(selection)
+      if (isSelectionAllowed(selection)) {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(effectiveStorageKey, JSON.stringify(selection))
+        }
+        setFilterSelectionState(selection)
+      }
     },
     setFilterSelection: (selection: FilterSelection) => {
-      localStorage?.setItem(storageKey, JSON.stringify(selection))
-      setFilterSelection(selection)
+      if (isSelectionAllowed(selection)) {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(effectiveStorageKey, JSON.stringify(selection))
+        }
+        setFilterSelectionState(selection)
+      }
     },
   }
 

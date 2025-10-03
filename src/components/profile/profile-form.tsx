@@ -81,7 +81,24 @@ export function ProfileForm() {
       const data = await response.json()
       if (data.success && data.data) {
         setCostCenterGroups(data.data.groups || [])
-        setCostCenters(data.data.ungrouped || [])
+
+        // Get all individual cost centers from groups AND ungrouped
+        const allIndividualCCs: string[] = []
+
+        // Add cost centers from groups
+        data.data.groups?.forEach((group: any) => {
+          if (group.costCenters && Array.isArray(group.costCenters)) {
+            allIndividualCCs.push(...group.costCenters)
+          }
+        })
+
+        // Add ungrouped cost centers
+        if (data.data.ungrouped && Array.isArray(data.data.ungrouped)) {
+          allIndividualCCs.push(...data.data.ungrouped)
+        }
+
+        // Sort and deduplicate
+        setCostCenters([...new Set(allIndividualCCs)].sort())
       }
     } catch (error) {
       console.error('Failed to fetch cost centers:', error)
@@ -221,28 +238,41 @@ export function ProfileForm() {
           {/* Cost Center */}
           <div className="space-y-2">
             <Label htmlFor="costCenter">Cost Center</Label>
-            <Select
-              value={formData.costCenter}
-              onValueChange={(value) => setFormData({ ...formData, costCenter: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select cost center" />
-              </SelectTrigger>
-              <SelectContent>
-                {/* Grouped cost centers */}
-                {costCenterGroups.map((group) => (
-                  <SelectItem key={group.id} value={group.id}>
-                    {group.displayName} (Group)
-                  </SelectItem>
-                ))}
-                {/* Individual cost centers */}
-                {costCenters.map((cc) => (
-                  <SelectItem key={cc} value={cc}>
-                    {cc}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {user?.userType === 'AGENT' ? (
+              <>
+                <Input
+                  id="costCenter"
+                  value={formData.costCenter || 'Not assigned'}
+                  disabled
+                  className="bg-muted"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Your cost center is automatically assigned and cannot be changed. Contact an administrator if you need to update this.
+                </p>
+              </>
+            ) : (
+              <>
+                <Select
+                  value={formData.costCenter}
+                  onValueChange={(value) => setFormData({ ...formData, costCenter: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select cost center" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Show all individual cost centers (from both grouped and ungrouped) */}
+                    {costCenters.map((cc) => (
+                      <SelectItem key={cc} value={cc}>
+                        {cc}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Select your individual cost center. Filtering will be automatically applied based on your group.
+                </p>
+              </>
+            )}
           </div>
 
           {/* User Type */}
@@ -261,7 +291,12 @@ export function ProfileForm() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="AGENT">Agent</SelectItem>
-                <SelectItem value="ADMINISTRATOR">Administrator</SelectItem>
+                <SelectItem
+                  value="ADMINISTRATOR"
+                  disabled={user?.userType !== 'ADMINISTRATOR'}
+                >
+                  Administrator
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">

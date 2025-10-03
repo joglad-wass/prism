@@ -41,6 +41,8 @@ interface DealDetailPageProps {
 export default function DealDetailPage({ params }: DealDetailPageProps) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('overview')
+  const [highlightedScheduleId, setHighlightedScheduleId] = useState<string | undefined>(undefined)
+  const [highlightedPaymentId, setHighlightedPaymentId] = useState<string | undefined>(undefined)
   const { id } = use(params)
 
   const { data: deal, isLoading, error } = useDeal(id)
@@ -527,7 +529,19 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
           </TabsContent>
 
           <TabsContent value="products">
-            <DealProducts deal={deal} />
+            <DealProducts
+              deal={deal}
+              highlightedScheduleId={highlightedScheduleId}
+              onNavigateToPayment={(paymentId) => {
+                setHighlightedPaymentId(paymentId)
+                setActiveTab('payments')
+                // Scroll to the payment after tab change
+                setTimeout(() => {
+                  // The payment will be automatically selected in the DealPayments component
+                  // via the highlightedPaymentId prop
+                }, 100)
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="schedules">
@@ -535,7 +549,26 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
           </TabsContent>
 
           <TabsContent value="payments">
-            <DealPayments deal={deal} />
+            <DealPayments
+              deal={deal}
+              highlightedPaymentId={highlightedPaymentId}
+              onNavigateToSchedule={(scheduleId) => {
+                setHighlightedScheduleId(scheduleId)
+                setActiveTab('products')
+                // Scroll to the schedule in the products tab
+                setTimeout(() => {
+                  const element = document.getElementById(`schedule-${scheduleId}`)
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    element.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2')
+                    setTimeout(() => {
+                      element.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2')
+                      setHighlightedScheduleId(undefined) // Clear highlight after animation
+                    }, 2000)
+                  }
+                }, 100)
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="notes">
