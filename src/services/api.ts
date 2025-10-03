@@ -47,7 +47,15 @@ api.interceptors.response.use(
     return response
   },
   (error) => {
-    console.error('🔴 API Response Error:', error.response?.data || error.message)
+    console.error('🔴 API Response Error:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+      fullError: error
+    })
 
     // Handle different error types
     if (error.response?.status === 401) {

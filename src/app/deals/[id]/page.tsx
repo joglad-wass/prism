@@ -314,14 +314,14 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Start Date</span>
                   <span className="text-sm text-muted-foreground">
-                    {formatDate(deal.createdAt)}
+                    {formatDate(deal.Contract_Start_Date__c)}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Close Date</span>
                   <span className="text-sm text-muted-foreground">
-                    {formatDate(deal.CloseDate)}
+                    {formatDate(deal.Contract_End_Date__c)}
                   </span>
                 </div>
 
