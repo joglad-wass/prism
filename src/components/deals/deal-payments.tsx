@@ -12,7 +12,8 @@ import {
   Hash,
   Banknote,
   DollarSign,
-  Receipt
+  Receipt,
+  Package
 } from 'lucide-react'
 import { Deal, Payment, PaymentRemittance } from '../../types'
 import { usePaymentsByDeal } from '../../hooks/usePayments'
@@ -21,9 +22,10 @@ interface DealPaymentsProps {
   deal: Deal
   highlightedPaymentId?: string
   onNavigateToSchedule?: (scheduleId: string) => void
+  onNavigateToProduct?: (productId: string) => void
 }
 
-export function DealPayments({ deal, highlightedPaymentId, onNavigateToSchedule }: DealPaymentsProps) {
+export function DealPayments({ deal, highlightedPaymentId, onNavigateToSchedule, onNavigateToProduct }: DealPaymentsProps) {
   const { data: payments, isLoading } = usePaymentsByDeal(deal.id)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
   const router = useRouter()
@@ -267,79 +269,177 @@ export function DealPayments({ deal, highlightedPaymentId, onNavigateToSchedule 
                 Payment Remittances ({activePayment.paymentRemittances.length})
               </h3>
               <div className="space-y-4">
-                {activePayment.paymentRemittances.map((remittance: PaymentRemittance) => (
-                  <div key={remittance.id} className="border rounded-lg p-4 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {remittance.amountToPay !== undefined && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Amount to Pay</p>
-                          <p className="font-semibold text-green-600 dark:text-green-400">
-                            {formatCurrency(remittance.amountToPay)}
-                          </p>
-                        </div>
-                      )}
-                      {remittance.billToCustomerId && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Bill To Customer</p>
-                          <p className="font-medium text-sm">{remittance.billToCustomerId}</p>
-                        </div>
-                      )}
-                    </div>
+                {activePayment.paymentRemittances.map((remittance: PaymentRemittance) => {
+                  // Get the first schedule's invoice ID if available
+                  const invoiceId = remittance.schedules?.[0]?.WD_Invoice_ID__c
 
-                    {/* Linked Schedules */}
-                    {remittance.schedules && remittance.schedules.length > 0 && (
+                  // Group schedules by product and use all product schedules
+                  const productMap = new Map<string, { product: any; schedules: any[]; paidScheduleIds: Set<string> }>()
+
+                  remittance.schedules?.forEach((schedule) => {
+                    if (schedule.product && schedule.allProductSchedules) {
+                      const productId = schedule.product.id
+                      if (!productMap.has(productId)) {
+                        productMap.set(productId, {
+                          product: schedule.product,
+                          schedules: schedule.allProductSchedules, // Use all schedules for this product
+                          paidScheduleIds: new Set()
+                        })
+                      }
+                      // Track which schedule has the payment applied to it
+                      productMap.get(productId)!.paidScheduleIds.add(schedule.id)
+                    }
+                  })
+
+                  const linkedProducts = Array.from(productMap.values())
+
+                  return (
+                    <div key={remittance.id} className="border rounded-lg p-4 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {invoiceId && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Invoice ID</p>
+                            <p className="font-medium text-sm font-mono">{invoiceId}</p>
+                          </div>
+                        )}
+                        {remittance.amountToPay !== undefined && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Invoice Amount Remaining to Pay</p>
+                            <p className="font-semibold text-orange-600 dark:text-orange-400">
+                              {formatCurrency(remittance.amountToPay)}
+                            </p>
+                          </div>
+                        )}
+                        {remittance.billToCustomerId && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Bill To Customer</p>
+                            <p className="font-medium text-sm">{remittance.billToCustomerId}</p>
+                          </div>
+                        )}
+                      </div>
+
+                    {/* Linked Products */}
+                    {linkedProducts.length > 0 && (
                       <div className="pt-4 border-t">
                         <h4 className="font-medium mb-3 flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          Linked Schedules ({remittance.schedules.length})
+                          <Package className="h-4 w-4" />
+                          Linked Products ({linkedProducts.length})
                         </h4>
-                        <div className="space-y-2">
-                          {remittance.schedules.map((schedule) => (
-                            <div
-                              key={schedule.id}
-                              className="bg-muted p-3 rounded flex items-center justify-between hover:bg-muted/70 cursor-pointer transition-colors"
-                              onClick={() => {
-                                if (onNavigateToSchedule) {
-                                  onNavigateToSchedule(schedule.id)
-                                }
-                              }}
-                            >
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  {schedule.WD_Invoice_ID__c && (
-                                    <Receipt className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                                  )}
-                                  {schedule.WD_Payment_Status__c?.toLowerCase() === 'paid' && (
-                                    <DollarSign className="h-3 w-3 text-green-600 dark:text-green-400" />
-                                  )}
-                                  <p className="font-medium text-sm">{formatDate(schedule.ScheduleDate || '')}</p>
-                                </div>
-                                {schedule.Description && (
-                                  <p className="text-xs text-muted-foreground mt-1">{schedule.Description}</p>
-                                )}
-                                <div className="flex items-center gap-4 mt-2 text-xs">
-                                  <div>
-                                    <span className="text-muted-foreground">Revenue: </span>
-                                    <span className="font-medium">{formatCurrency(schedule.Revenue || 0)}</span>
-                                  </div>
-                                  {schedule.Wasserman_Invoice_Line_Amount__c !== undefined && (
-                                    <div>
-                                      <span className="text-muted-foreground">Commission: </span>
-                                      <span className="font-medium">{formatCurrency(schedule.Wasserman_Invoice_Line_Amount__c)}</span>
+                        <div className="space-y-4">
+                          {linkedProducts.map(({ product, schedules, paidScheduleIds }) => {
+                            // Calculate total product amount from all schedules
+                            const totalAmount = schedules.reduce((sum, s) => sum + (parseFloat(s.Revenue || '0')), 0)
+                            const totalCommission = schedules.reduce((sum, s) => sum + (parseFloat(s.Wasserman_Invoice_Line_Amount__c || '0')), 0)
+
+                            return (
+                              <div key={product.id} className="border rounded-lg overflow-hidden">
+                                {/* Product Card Header - Clickable */}
+                                <div
+                                  className="bg-muted/50 p-4 hover:bg-muted/70 cursor-pointer transition-colors"
+                                  onClick={() => {
+                                    if (onNavigateToProduct) {
+                                      onNavigateToProduct(product.id)
+                                    }
+                                  }}
+                                >
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <Package className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                        <h5 className="font-semibold text-sm truncate">{product.Product_Name__c}</h5>
+                                      </div>
+                                      {product.ProductCode && (
+                                        <p className="text-xs text-muted-foreground mt-1">Code: {product.ProductCode}</p>
+                                      )}
+                                      <div className="flex items-center gap-4 mt-2 text-xs">
+                                        <div>
+                                          <span className="text-muted-foreground">Total Revenue: </span>
+                                          <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(totalAmount)}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-muted-foreground">Total Commission: </span>
+                                          <span className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(totalCommission)}</span>
+                                        </div>
+                                      </div>
                                     </div>
-                                  )}
+                                    {product.UnitPrice && (
+                                      <div className="text-right flex-shrink-0">
+                                        <div className="text-xs text-muted-foreground">Unit Price</div>
+                                        <div className="text-sm font-medium">{formatCurrency(product.UnitPrice)}</div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Schedules Sub-items */}
+                                <div className="p-3 bg-background space-y-2">
+                                  <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    Schedules ({schedules.length})
+                                  </div>
+                                  {schedules.map((schedule) => {
+                                    const isPaidSchedule = paidScheduleIds.has(schedule.id)
+
+                                    return (
+                                      <div
+                                        key={schedule.id}
+                                        className={`p-3 rounded flex items-center justify-between hover:bg-muted/50 cursor-pointer transition-colors ${
+                                          isPaidSchedule ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800' : 'bg-muted/30'
+                                        }`}
+                                        onClick={() => {
+                                          if (onNavigateToSchedule) {
+                                            onNavigateToSchedule(schedule.id)
+                                          }
+                                        }}
+                                      >
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-2">
+                                            {isPaidSchedule && (
+                                              <CreditCard className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                                            )}
+                                            {schedule.WD_Invoice_ID__c && (
+                                              <Receipt className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                                            )}
+                                            {schedule.WD_Payment_Status__c?.toLowerCase() === 'paid' && (
+                                              <DollarSign className="h-3 w-3 text-green-600 dark:text-green-400" />
+                                            )}
+                                            <p className="font-medium text-sm">{formatDate(schedule.ScheduleDate || '')}</p>
+                                            {isPaidSchedule && (
+                                              <Badge variant="outline" className="text-xs ml-2">Payment Applied</Badge>
+                                            )}
+                                          </div>
+                                        {schedule.Description && (
+                                          <p className="text-xs text-muted-foreground mt-1">{schedule.Description}</p>
+                                        )}
+                                        <div className="flex items-center gap-4 mt-2 text-xs">
+                                          <div>
+                                            <span className="text-muted-foreground">Revenue: </span>
+                                            <span className="font-medium">{formatCurrency(schedule.Revenue || 0)}</span>
+                                          </div>
+                                          {schedule.Wasserman_Invoice_Line_Amount__c !== undefined && (
+                                            <div>
+                                              <span className="text-muted-foreground">Commission: </span>
+                                              <span className="font-medium">{formatCurrency(schedule.Wasserman_Invoice_Line_Amount__c)}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="ml-4">
+                                        {getScheduleStatusBadge(schedule)}
+                                      </div>
+                                    </div>
+                                  )
+                                })}
                                 </div>
                               </div>
-                              <div className="ml-4">
-                                {getScheduleStatusBadge(schedule)}
-                              </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       </div>
                     )}
-                  </div>
-                ))}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}

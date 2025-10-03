@@ -53,10 +53,11 @@ import { scheduleKeys } from '../../hooks/useSchedules'
 interface DealProductsProps {
   deal: Deal
   highlightedScheduleId?: string
+  highlightedProductId?: string
   onNavigateToPayment?: (paymentId: string) => void
 }
 
-export function DealProducts({ deal, highlightedScheduleId, onNavigateToPayment }: DealProductsProps) {
+export function DealProducts({ deal, highlightedScheduleId, highlightedProductId, onNavigateToPayment }: DealProductsProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -143,6 +144,21 @@ export function DealProducts({ deal, highlightedScheduleId, onNavigateToPayment 
       }
     }
   }, [highlightedScheduleId, deal.products])
+
+  // Handle highlighted product from external navigation (e.g., from payments tab)
+  useEffect(() => {
+    if (highlightedProductId && deal.products) {
+      // Find the product
+      const product = deal.products.find(p => p.id === highlightedProductId)
+      if (product) {
+        // Expand the product
+        setExpandedProducts(prev => new Set(prev).add(product.id))
+        // Select the product
+        setSelectedProductForView(product)
+        setSelectedSchedule(null)
+      }
+    }
+  }, [highlightedProductId, deal.products])
 
   const handleCreateWorkdayProject = () => {
     // Future: Implement Workday project creation
@@ -1095,7 +1111,7 @@ export function DealProducts({ deal, highlightedScheduleId, onNavigateToPayment 
               </Card>
 
               {/* Right: Product/Schedule Details */}
-              <Card className="lg:col-span-2">
+              <Card className="lg:col-span-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>

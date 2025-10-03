@@ -43,6 +43,7 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
   const [activeTab, setActiveTab] = useState('overview')
   const [highlightedScheduleId, setHighlightedScheduleId] = useState<string | undefined>(undefined)
   const [highlightedPaymentId, setHighlightedPaymentId] = useState<string | undefined>(undefined)
+  const [highlightedProductId, setHighlightedProductId] = useState<string | undefined>(undefined)
   const { id } = use(params)
 
   const { data: deal, isLoading, error } = useDeal(id)
@@ -532,6 +533,7 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
             <DealProducts
               deal={deal}
               highlightedScheduleId={highlightedScheduleId}
+              highlightedProductId={highlightedProductId}
               onNavigateToPayment={(paymentId) => {
                 setHighlightedPaymentId(paymentId)
                 setActiveTab('payments')
@@ -567,6 +569,16 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
                     }, 2000)
                   }
                 }, 100)
+              }}
+              onNavigateToProduct={(productId) => {
+                setHighlightedProductId(productId)
+                setActiveTab('products')
+                // Wait for tab change to complete
+                setTimeout(() => {
+                  // Product will be automatically selected in DealProducts component
+                  // via the highlightedProductId prop
+                  setHighlightedProductId(undefined) // Clear after navigation
+                }, 500)
               }}
             />
           </TabsContent>
