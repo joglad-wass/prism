@@ -2,6 +2,7 @@
 
 import { Badge } from '../ui/badge'
 import { Mail, Phone, Users, Briefcase } from 'lucide-react'
+import { useLabels } from '../../hooks/useLabels'
 
 interface AgentListPanelProps {
   agents: Array<{
@@ -24,6 +25,7 @@ export function AgentListPanel({
   selectedAgentId,
   onAgentClick,
 }: AgentListPanelProps) {
+  const { labels } = useLabels()
   return (
     <div className={selectedAgentId ? 'lg:col-span-1' : ''}>
       <div className={`space-y-2 ${selectedAgentId ? '' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3'}`}>
@@ -73,7 +75,7 @@ export function AgentListPanel({
                 </div>
                 <div className="flex items-center gap-1">
                   <Briefcase className="h-3 w-3" />
-                  {agent.deals?.length || 0} deals
+                  {agent.deals?.length || 0} {labels.deals.toLowerCase()}
                 </div>
               </div>
             </div>

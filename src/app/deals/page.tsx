@@ -25,8 +25,10 @@ import { useFilter } from '../../contexts/filter-context'
 import { DealListPanel } from '../../components/deals/deal-list-panel'
 import { DealDetailsPanel } from '../../components/deals/deal-details-panel'
 import { Search, Plus, Briefcase, DollarSign, TrendingUp, Calendar, Target, Loader2 } from 'lucide-react'
+import { useLabels } from '../../hooks/useLabels'
 
 export default function DealsPage() {
+  const { labels } = useLabels()
   const { filterSelection } = useFilter()
   const [filters, setFilters] = useState<DealFilters>({
     limit: 50,
@@ -169,7 +171,7 @@ export default function DealsPage() {
       <AppLayout>
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
-            <h2 className="text-lg font-semibold text-red-600">Error Loading Deals</h2>
+            <h2 className="text-lg font-semibold text-red-600">Error Loading {labels.deals}</h2>
             <p className="text-sm text-muted-foreground mt-2">
               Could not connect to the API. Make sure the backend server is running on http://localhost:3001
             </p>
@@ -185,14 +187,14 @@ export default function DealsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Deals</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{labels.deals}</h1>
             <p className="text-muted-foreground">
-              Track your deal pipeline and manage client contracts
+              Track your {labels.deal.toLowerCase()} pipeline and manage client contracts
             </p>
           </div>
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            New Deal
+            New {labels.deal}
           </Button>
         </div>
 
@@ -200,7 +202,7 @@ export default function DealsPage() {
         <div className="grid gap-4 md:grid-cols-5">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Deals</CardTitle>
+              <CardTitle className="text-sm font-medium">Total {labels.deals}</CardTitle>
               <Briefcase className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -208,7 +210,7 @@ export default function DealsPage() {
                 {dealsResponse?.meta.total || 0}
               </div>
               <p className="text-xs text-muted-foreground">
-                All deals
+                All {labels.deals.toLowerCase()}
               </p>
             </CardContent>
           </Card>
@@ -230,7 +232,7 @@ export default function DealsPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Won Deals</CardTitle>
+              <CardTitle className="text-sm font-medium">Won {labels.deals}</CardTitle>
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -279,7 +281,7 @@ export default function DealsPage() {
           <CardHeader>
             <CardTitle>Filters</CardTitle>
             <CardDescription>
-              Filter and search through your deal pipeline
+              Filter and search through your {labels.deal.toLowerCase()} pipeline
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -289,7 +291,7 @@ export default function DealsPage() {
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search deals..."
+                    placeholder={`Search ${labels.deals.toLowerCase()}...`}
                     className="pl-8"
                     onChange={(e) => handleSearchChange(e.target.value)}
                   />
@@ -334,21 +336,21 @@ export default function DealsPage() {
         {/* Deal Pipeline - Panel Layout */}
         <Card>
           <CardHeader>
-            <CardTitle>Deal Pipeline</CardTitle>
+            <CardTitle>{labels.deal} Pipeline</CardTitle>
             <CardDescription>
-              {isLoading ? 'Loading...' : `Showing ${dealsResponse?.data.length || 0} of ${dealsResponse?.meta.total || 0} deals`}
+              {isLoading ? 'Loading...' : `Showing ${dealsResponse?.data.length || 0} of ${dealsResponse?.meta.total || 0} ${labels.deals.toLowerCase()}`}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="text-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Loading deals...</p>
+                <p className="text-sm text-muted-foreground">Loading {labels.deals.toLowerCase()}...</p>
               </div>
             ) : dealsResponse?.data.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p>No deals found matching your criteria</p>
+                <p>No {labels.deals.toLowerCase()} found matching your criteria</p>
               </div>
             ) : (
               <div ref={containerRef} className="relative">
@@ -376,7 +378,7 @@ export default function DealsPage() {
                     >
                       <DealDetailsPanel
                         deal={selectedDeal}
-                        emptyMessage="Select a deal to view details"
+                        emptyMessage={`Select a ${labels.deal.toLowerCase()} to view details`}
                         formatCurrency={formatCurrency}
                         formatDate={formatDate}
                         getStageVariant={getStageVariant}

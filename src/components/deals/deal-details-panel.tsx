@@ -6,6 +6,7 @@ import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Separator } from '../ui/separator'
 import { Briefcase, Building2, DollarSign, Calendar, User, ExternalLink, X, TrendingUp, Calculator } from 'lucide-react'
+import { useLabels } from '../../hooks/useLabels'
 
 type ScheduleLike = {
   id?: string
@@ -61,6 +62,7 @@ export function DealDetailsPanel({
   getStageVariant,
   onClose,
 }: DealDetailsPanelProps) {
+  const { labels } = useLabels()
   const normalizeAmount = (value: unknown): number => {
     if (value === null || value === undefined) return 0
     if (typeof value === 'number') {
@@ -169,11 +171,11 @@ export function DealDetailsPanel({
             <div className="space-y-4">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <Briefcase className="h-4 w-4" />
-                Deal Details
+                {labels.deal} Details
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm text-muted-foreground mb-1">Deal Name</div>
+                  <div className="text-sm text-muted-foreground mb-1">{labels.deal} Name</div>
                   <div className="text-sm font-medium">
                     <Link
                       href={`/deals/${deal.id}`}
@@ -259,7 +261,7 @@ export function DealDetailsPanel({
                   <div className="p-4 border rounded-lg">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                       <DollarSign className="h-4 w-4" />
-                      Deal Amount
+                      {labels.deal} Amount
                     </div>
                     <div className="text-2xl font-bold">
                       {formatCurrency(deal.Amount)}

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { BrandService } from '../../../services/brands'
 import { Brand } from '../../../types'
+import { useLabels } from '../../../hooks/useLabels'
 
 interface BrandDetailPageProps {
   params: Promise<{
@@ -26,6 +27,7 @@ interface BrandDetailPageProps {
 }
 
 export default function BrandDetailPage({ params }: BrandDetailPageProps) {
+  const { labels } = useLabels()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('overview')
   const [brand, setBrand] = useState<Brand | null>(null)
@@ -204,7 +206,7 @@ export default function BrandDetailPage({ params }: BrandDetailPageProps) {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="talent">Talent</TabsTrigger>
             <TabsTrigger value="contact">Contact</TabsTrigger>
-            <TabsTrigger value="deals">Deals</TabsTrigger>
+            <TabsTrigger value="deals">{labels.deals}</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
           </TabsList>
 

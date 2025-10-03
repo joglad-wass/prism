@@ -13,6 +13,7 @@ import { Separator } from '../ui/separator'
 import { User, Building, Target, Trophy, DollarSign, Activity, SquareMenu, MapPin } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
 import Image from 'next/image'
+import { useLabels } from '../../hooks/useLabels'
 
 export interface TalentQuickViewData {
   id: string
@@ -46,6 +47,7 @@ interface TalentQuickViewProps {
 export function TalentQuickView({ talent, open, onOpenChange, onViewProfile }: TalentQuickViewProps) {
   if (!talent) return null
 
+  const { labels } = useLabels()
   const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -121,7 +123,7 @@ export function TalentQuickView({ talent, open, onOpenChange, onViewProfile }: T
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Building className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Agent</span>
+                <span className="text-sm font-medium">{labels.agent}</span>
               </div>
               <span className="text-sm text-muted-foreground">
                 {talent.agents?.find(ta => ta.isPrimary)?.agent?.name || talent.agents?.[0]?.agent?.name || 'No agent assigned'}
@@ -166,7 +168,7 @@ export function TalentQuickView({ talent, open, onOpenChange, onViewProfile }: T
           {/* Business Metrics */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Deal Count</span>
+              <span className="text-sm font-medium">{labels.deal} Count</span>
               <span className="text-sm font-semibold">{talent.dealCount || 0}</span>
             </div>
 

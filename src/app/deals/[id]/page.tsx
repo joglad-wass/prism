@@ -16,6 +16,7 @@ import { DealNotes } from '../../../components/deals/deal-notes'
 import { DealPayments } from '../../../components/deals/deal-payments'
 import {
   ArrowLeft,
+  Signature,
   ExternalLink,
   Loader2,
   Briefcase,
@@ -31,6 +32,7 @@ import {
 import { useDeal } from '../../../hooks/useDeals'
 import { useSchedulesByDeal } from '../../../hooks/useSchedules'
 import { Deal } from '../../../types'
+import { useLabels } from '../../../hooks/useLabels'
 
 interface DealDetailPageProps {
   params: Promise<{
@@ -40,6 +42,7 @@ interface DealDetailPageProps {
 
 export default function DealDetailPage({ params }: DealDetailPageProps) {
   const router = useRouter()
+  const { labels } = useLabels()
   const [activeTab, setActiveTab] = useState('overview')
   const [highlightedScheduleId, setHighlightedScheduleId] = useState<string | undefined>(undefined)
   const [highlightedPaymentId, setHighlightedPaymentId] = useState<string | undefined>(undefined)
@@ -131,9 +134,9 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
       <AppLayout>
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
-            <h2 className="text-lg font-semibold text-red-600">Error Loading Deal</h2>
+            <h2 className="text-lg font-semibold text-red-600">Error Loading {labels.deal}</h2>
             <p className="text-sm text-muted-foreground mt-2">
-              {error instanceof Error ? error.message : 'Failed to load deal details'}
+              {error instanceof Error ? error.message : `Failed to load ${labels.deal.toLowerCase()} details`}
             </p>
             <div className="flex gap-2 mt-4 justify-center">
               <Button variant="outline" onClick={() => router.back()}>
@@ -155,9 +158,9 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
       <AppLayout>
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
-            <h2 className="text-lg font-semibold">Deal Not Found</h2>
+            <h2 className="text-lg font-semibold">{labels.deal} Not Found</h2>
             <p className="text-sm text-muted-foreground mt-2">
-              The deal you're looking for doesn't exist.
+              The {labels.deal.toLowerCase()} you're looking for doesn't exist.
             </p>
             <Button variant="outline" onClick={() => router.back()} className="mt-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -231,7 +234,7 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building className="h-5 w-5" />
-                Deal Information
+                {labels.deal} Information
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -338,49 +341,68 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
           </Card>
 
           {/* Owner Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Owner Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Owner</span>
-                  <span className="text-sm text-muted-foreground">
-                    {deal.owner?.name || deal.Licence_Holder_Name__c || 'Unassigned'}
-                  </span>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Owner Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Owner</span>
+                    <span className="text-sm text-muted-foreground">
+                      {deal.owner?.name || deal.Licence_Holder_Name__c || 'Unassigned'}
+                    </span>
+                  </div>
+
+                  {deal.owner?.email && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Owner Email</span>
+                      <span className="text-sm text-muted-foreground">{deal.owner.email}</span>
+                    </div>
+                  )}
+
+                  {deal.Owner_Workday_Cost_Center__c && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Cost Center</span>
+                      <span className="text-sm text-muted-foreground">
+                        {deal.Owner_Workday_Cost_Center__c}
+                      </span>
+                    </div>
+                  )}
+
+                  {deal.CompanyReference__c && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Company Reference</span>
+                      <span className="text-sm text-muted-foreground">
+                        {deal.CompanyReference__c}
+                      </span>
+                    </div>
+                  )}
                 </div>
+              </CardContent>
+            </Card>
 
-                {deal.owner?.email && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Owner Email</span>
-                    <span className="text-sm text-muted-foreground">{deal.owner.email}</span>
-                  </div>
-                )}
-
-                {deal.Owner_Workday_Cost_Center__c && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Cost Center</span>
-                    <span className="text-sm text-muted-foreground">
-                      {deal.Owner_Workday_Cost_Center__c}
-                    </span>
-                  </div>
-                )}
-
-                {deal.CompanyReference__c && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Company Reference</span>
-                    <span className="text-sm text-muted-foreground">
-                      {deal.CompanyReference__c}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+            {/* CLM Details */}
+            <Card>
+              <CardHeader className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2">
+                  <Signature className="h-5 w-5" />
+                  Contract Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  
+                  <span className="text-sm font-medium">CLM Contract Number</span>
+                  <span className="text-sm text-muted-foreground">--</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Financial Information */}
@@ -391,7 +413,7 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
               Financial Details
             </CardTitle>
             <CardDescription>
-              Deal amounts, percentages, and commission calculations
+              {labels.deal} amounts, percentages, and commission calculations
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -400,7 +422,7 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Deal Amount</span>
+                  <span className="text-sm font-medium">{labels.deal} Amount</span>
                 </div>
                 <div className="text-2xl font-bold">
                   {formatCurrency(deal.Amount)}
@@ -449,7 +471,7 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Percent className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">Deal Percentage</span>
+                        <span className="text-sm font-medium">{labels.deal} Percentage</span>
                       </div>
                       <span className="text-sm font-semibold">{deal.dealPercent}%</span>
                     </div>

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
 import { Briefcase, ChevronDown, ChevronRight, DollarSign, Package } from 'lucide-react'
+import { useLabels } from '../../hooks/useLabels'
 
 interface DealListPanelProps {
   deals: any[]
@@ -28,6 +29,8 @@ export function DealListPanel({
   onToggleExpansion,
   formatCurrency,
 }: DealListPanelProps) {
+  const { labels } = useLabels()
+
   return (
     <Card className="lg:col-span-1">
       <CardHeader>
@@ -40,7 +43,7 @@ export function DealListPanel({
         {deals.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
-            <p>No deals found</p>
+            <p>No {labels.deals.toLowerCase()} found</p>
           </div>
         ) : (
           <div className="space-y-2">

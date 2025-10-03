@@ -661,3 +661,108 @@ export interface PaymentRemittance {
   // Related schedules
   schedules?: Schedule[]
 }
+
+// Calendar Event Types
+export type CalendarEventType =
+  | 'DEAL_CONTRACT_START'
+  | 'DEAL_CONTRACT_END'
+  | 'DEAL_STAGE_CHANGE'
+  | 'DEAL_NOTE'
+  | 'DEAL_CREATED'
+  | 'SCHEDULE_DATE'
+  | 'SCHEDULE_PAYMENT'
+  | 'PRODUCT_CREATED'
+  | 'INVOICE_DATE'
+  | 'PAYMENT_DATE'
+  | 'TALENT_NOTE'
+  | 'TALENT_EMAIL_LOG'
+  | 'TALENT_CALL_LOG'
+  | 'TALENT_SIGNED'
+  | 'TALENT_DROPPED'
+  | 'TALENT_NEW_DEAL'
+  | 'TALENT_NEW_BRAND'
+  | 'BRAND_NOTE'
+  | 'BRAND_STATUS_CHANGE'
+  | 'BRAND_NEW_DEAL'
+
+export interface CalendarEvent {
+  id: string
+  date: string
+  title: string
+  type: CalendarEventType
+  entityType: 'deal' | 'talent' | 'brand' | 'note' | 'schedule' | 'product' | 'payment' | 'invoice' | 'emailLog' | 'callLog'
+  entityId: string
+  metadata?: {
+    oldValue?: string
+    newValue?: string
+    amount?: number
+    status?: string
+    [key: string]: any
+  }
+  // Optional relationships for quick access
+  deal?: { id: string; Name: string }
+  talentClient?: { id: string; Name: string }
+  brand?: { id: string; name: string }
+}
+
+export interface CalendarEventFilters {
+  agentId?: string
+  costCenter?: string
+  startDate?: string
+  endDate?: string
+  eventTypes?: CalendarEventType[]
+  entityTypes?: CalendarEvent['entityType'][]
+}
+
+// Agent Stats Types
+export interface AgentStats {
+  myDeals: {
+    total: number
+    active: number
+    totalValue: number
+    recent: Array<{
+      id: string
+      Name: string
+      Amount?: number
+      Status__c: string
+      StageName: string
+      brand?: { name: string }
+    }>
+  }
+  myBrands: {
+    total: number
+    active: number
+    recent: Array<{
+      id: string
+      name: string
+      type: string
+      status: string
+      dealCount?: number
+    }>
+  }
+  myClients: {
+    total: number
+    active: number
+    recent: Array<{
+      id: string
+      Name: string
+      status: string
+      category?: string
+      sport?: string
+    }>
+  }
+}
+
+// Label Mapping Types
+export type LabelKey = 'agent' | 'agents' | 'deal' | 'deals'
+
+export type DivisionLabels = Record<LabelKey, string>
+
+export interface DivisionLabelMapping {
+  id: string
+  createdAt: string
+  updatedAt: string
+  division: string
+  labelKey: string
+  labelValue: string
+}

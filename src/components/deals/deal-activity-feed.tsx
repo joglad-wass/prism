@@ -26,12 +26,14 @@ import {
 } from '../ui/select'
 import { Deal } from '../../types'
 import { useActivityFeed } from '../../hooks/useActivities'
+import { useLabels } from '../../hooks/useLabels'
 
 interface DealActivityFeedProps {
   deal: Deal
 }
 
 export function DealActivityFeed({ deal }: DealActivityFeedProps) {
+  const { labels } = useLabels()
   const [activityTypeFilter, setActivityTypeFilter] = useState<string | undefined>()
   const [limit, setLimit] = useState(50)
 
@@ -161,7 +163,7 @@ export function DealActivityFeed({ deal }: DealActivityFeedProps) {
                 Activity Feed
               </CardTitle>
               <CardDescription>
-                Latest actions and updates on this deal
+                Latest actions and updates on this {labels.deal.toLowerCase()}
               </CardDescription>
             </div>
 
@@ -193,7 +195,7 @@ export function DealActivityFeed({ deal }: DealActivityFeedProps) {
               <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
               <h3 className="font-medium mb-2">No activity yet</h3>
               <p className="text-sm text-muted-foreground">
-                Activity will appear here as changes are made to the deal
+                Activity will appear here as changes are made to the {labels.deal.toLowerCase()}
               </p>
             </div>
           ) : (

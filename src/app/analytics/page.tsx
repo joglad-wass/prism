@@ -15,6 +15,7 @@ import { useBrands } from '../../hooks/useBrands'
 import { useAgents } from '../../hooks/useAgents'
 import { useDeals } from '../../hooks/useDeals'
 import { useFilter } from '../../contexts/filter-context'
+import { useLabels } from '../../hooks/useLabels'
 import {
   BarChart3,
   TrendingUp,
@@ -29,6 +30,7 @@ import {
 } from 'lucide-react'
 
 export default function AnalyticsPage() {
+  const { labels } = useLabels()
   const { filterSelection } = useFilter()
 
   const filterParams = {
@@ -155,20 +157,20 @@ export default function AnalyticsPage() {
             <CardContent>
               <div className="text-2xl font-bold">{formatCurrency(totalDealValue)}</div>
               <p className="text-xs text-muted-foreground">
-                Across {deals.length} deals
+                Across {deals.length} {deals.length === 1 ? labels.deal.toLowerCase() : labels.deals.toLowerCase()}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Deal Size</CardTitle>
+              <CardTitle className="text-sm font-medium">Avg {labels.deal} Size</CardTitle>
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatCurrency(avgDealSize)}</div>
               <p className="text-xs text-muted-foreground">
-                Per deal average
+                Per {labels.deal.toLowerCase()} average
               </p>
             </CardContent>
           </Card>
@@ -183,7 +185,7 @@ export default function AnalyticsPage() {
                 {getPercentage(dealsByStage['CLOSED_WON'] || 0, deals.length)}%
               </div>
               <p className="text-xs text-muted-foreground">
-                Deals closed won
+                {labels.deals} closed won
               </p>
             </CardContent>
           </Card>
@@ -198,7 +200,7 @@ export default function AnalyticsPage() {
                 {(dealsByStage['NEGOTIATION'] || 0) + (dealsByStage['PROPOSAL'] || 0)}
               </div>
               <p className="text-xs text-muted-foreground">
-                Deals in progress
+                {labels.deals} in progress
               </p>
             </CardContent>
           </Card>
@@ -236,8 +238,8 @@ export default function AnalyticsPage() {
           {/* Deal Pipeline */}
           <Card>
             <CardHeader>
-              <CardTitle>Deal Pipeline</CardTitle>
-              <CardDescription>Deals by stage breakdown</CardDescription>
+              <CardTitle>{labels.deal} Pipeline</CardTitle>
+              <CardDescription>{labels.deals} by stage breakdown</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {Object.entries(dealsByStage)
@@ -357,8 +359,8 @@ export default function AnalyticsPage() {
         {/* Top Performing Agents */}
         <Card>
           <CardHeader>
-            <CardTitle>Top Performing Agents</CardTitle>
-            <CardDescription>Agents ranked by deal revenue (only agents with deals)</CardDescription>
+            <CardTitle>Top Performing {labels.agents}</CardTitle>
+            <CardDescription>{labels.agents} ranked by {labels.deal.toLowerCase()} revenue (only {labels.agents.toLowerCase()} with {labels.deals.toLowerCase()})</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -380,7 +382,7 @@ export default function AnalyticsPage() {
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-medium">{agent.dealCount}</p>
-                      <p className="text-xs text-muted-foreground">Deals</p>
+                      <p className="text-xs text-muted-foreground">{labels.deals}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-medium">{agent.clientCount}</p>

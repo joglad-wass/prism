@@ -14,6 +14,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { useGlobalSearch } from '../../hooks/useSearch'
 import { useFilter } from '../../contexts/filter-context'
+import { useLabels } from '../../hooks/useLabels'
 import { SearchResult } from '../../types'
 import { Search, Users, Building2, UserCheck, Briefcase, Loader2 } from 'lucide-react'
 
@@ -23,6 +24,7 @@ interface GlobalSearchProps {
 }
 
 export function GlobalSearch({ trigger, onResultSelect }: GlobalSearchProps) {
+  const { labels } = useLabels()
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [debouncedQuery, setDebouncedQuery] = useState('')
@@ -117,7 +119,7 @@ export function GlobalSearch({ trigger, onResultSelect }: GlobalSearchProps) {
             )}
             {primaryAgent && (
               <div className="text-xs">
-                <span className="font-medium">Agent:</span> {primaryAgent}
+                <span className="font-medium">{labels.agent}:</span> {primaryAgent}
               </div>
             )}
           </div>
@@ -235,7 +237,7 @@ export function GlobalSearch({ trigger, onResultSelect }: GlobalSearchProps) {
           <div className="relative flex-shrink-0">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search talents, brands, agents, deals..."
+              placeholder={`Search talents, brands, ${labels.agents.toLowerCase()}, ${labels.deals.toLowerCase()}...`}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="pl-9"
@@ -315,7 +317,7 @@ export function GlobalSearch({ trigger, onResultSelect }: GlobalSearchProps) {
               <h4 className="font-medium mb-2">Search Tips:</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Search by name, email, or category</li>
-                <li>• Results include talents, brands, agents, and deals</li>
+                <li>• Results include talents, brands, {labels.agents.toLowerCase()}, and {labels.deals.toLowerCase()}</li>
                 <li>• Use specific terms for better results</li>
               </ul>
             </div>

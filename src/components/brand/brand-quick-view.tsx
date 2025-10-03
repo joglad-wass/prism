@@ -13,6 +13,7 @@ import { Separator } from '../ui/separator'
 import { Building2, User, Building, DollarSign, TrendingUp, Activity } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
 import Image from 'next/image'
+import { useLabels } from '../../hooks/useLabels'
 
 export interface BrandQuickViewData {
   id: string
@@ -42,6 +43,7 @@ interface BrandQuickViewProps {
 export function BrandQuickView({ brand, open, onOpenChange, onViewProfile }: BrandQuickViewProps) {
   if (!brand) return null
 
+  const { labels } = useLabels()
   const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -154,14 +156,14 @@ export function BrandQuickView({ brand, open, onOpenChange, onViewProfile }: Bra
           {/* Business Metrics */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Total Deals</span>
+              <span className="text-sm font-medium">Total {labels.deals}</span>
               <span className="text-sm font-semibold">{brand.dealCount || 0}</span>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Active Deals</span>
+                <span className="text-sm font-medium">Active {labels.deals}</span>
               </div>
               <span className="text-sm font-semibold">{brand.activeDeals || 0}</span>
             </div>

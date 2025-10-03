@@ -31,12 +31,14 @@ import {
 } from 'lucide-react'
 import { useTheme } from '../../contexts/theme-context'
 import { useUser } from '../../contexts/user-context'
+import { useLabels } from '../../hooks/useLabels'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 
 export function Header() {
   const router = useRouter()
   const { setTheme, theme } = useTheme()
   const { user, availableUsers, activeUserId, switchUser } = useUser()
+  const { labels } = useLabels()
   const [switchingUserId, setSwitchingUserId] = useState<string | null>(null)
 
   const getInitials = (name: string) => {
@@ -102,7 +104,7 @@ export function Header() {
           trigger={
             <Button variant="outline" className="justify-start w-full">
               <Search className="mr-2 h-4 w-4" />
-              Search talents, brands, deals...
+              Search talents, brands, {labels.deals.toLowerCase()}...
             </Button>
           }
         />

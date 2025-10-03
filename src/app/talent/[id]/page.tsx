@@ -21,6 +21,7 @@ import {
 import Image from 'next/image'
 import { TalentService } from '../../../services/talent'
 import { TalentDetail } from '../../../types/talent'
+import { useLabels } from '../../../hooks/useLabels'
 
 interface TalentDetailPageProps {
   params: Promise<{
@@ -29,6 +30,7 @@ interface TalentDetailPageProps {
 }
 
 export default function TalentDetailPage({ params }: TalentDetailPageProps) {
+  const { labels } = useLabels()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('overview')
   const [talent, setTalent] = useState<TalentDetail | null>(null)
@@ -339,7 +341,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="journey">Journey</TabsTrigger>
             <TabsTrigger value="contact">Contact</TabsTrigger>
-            <TabsTrigger value="deals">Deals</TabsTrigger>
+            <TabsTrigger value="deals">{labels.deals}</TabsTrigger>
             <TabsTrigger value="brands">Associated Brands</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
           </TabsList>

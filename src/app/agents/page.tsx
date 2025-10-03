@@ -24,9 +24,11 @@ import { AgentFilters } from '../../types'
 import { useFilter } from '../../contexts/filter-context'
 import { AgentListPanel } from '../../components/agent/agent-list-panel'
 import { AgentDetailsPanel } from '../../components/agent/agent-details-panel'
+import { useLabels } from '../../hooks/useLabels'
 import { Search, Plus, UserCheck, Users, Award, Loader2 } from 'lucide-react'
 
 export default function AgentsPage() {
+  const { labels } = useLabels()
   const { filterSelection } = useFilter()
   const [filters, setFilters] = useState<AgentFilters>({
     limit: 50,
@@ -124,7 +126,7 @@ export default function AgentsPage() {
       <AppLayout>
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
-            <h2 className="text-lg font-semibold text-red-600">Error Loading Agents</h2>
+            <h2 className="text-lg font-semibold text-red-600">Error Loading {labels.agents}</h2>
             <p className="text-sm text-muted-foreground mt-2">
               Could not connect to the API. Make sure the backend server is running on http://localhost:3001
             </p>
@@ -140,14 +142,14 @@ export default function AgentsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Agents</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{labels.agents}</h1>
             <p className="text-muted-foreground">
               Manage your team performance and client portfolios
             </p>
           </div>
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            Add Agent
+            Add {labels.agent}
           </Button>
         </div>
 
@@ -155,7 +157,7 @@ export default function AgentsPage() {
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Agents</CardTitle>
+              <CardTitle className="text-sm font-medium">Total {labels.agents}</CardTitle>
               <UserCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -185,7 +187,7 @@ export default function AgentsPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Average Clients per Agent</CardTitle>
+              <CardTitle className="text-sm font-medium">Average Clients per {labels.agent}</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -200,7 +202,7 @@ export default function AgentsPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Deals</CardTitle>
+              <CardTitle className="text-sm font-medium">Active {labels.deals}</CardTitle>
               <Award className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -208,7 +210,7 @@ export default function AgentsPage() {
                 {agentsResponse?.data.reduce((acc, agent) => acc + (agent.deals?.length || 0), 0) || 0}
               </div>
               <p className="text-xs text-muted-foreground">
-                Total deals
+                Total {labels.deals.toLowerCase()}
               </p>
             </CardContent>
           </Card>
@@ -219,7 +221,7 @@ export default function AgentsPage() {
           <CardHeader>
             <CardTitle>Filters</CardTitle>
             <CardDescription>
-              Filter and search through your agent roster
+              Filter and search through your {labels.agent.toLowerCase()} roster
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -229,7 +231,7 @@ export default function AgentsPage() {
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search agents..."
+                    placeholder={`Search ${labels.agents.toLowerCase()}...`}
                     className="pl-8"
                     onChange={(e) => handleSearchChange(e.target.value)}
                   />
@@ -275,7 +277,7 @@ export default function AgentsPage() {
             <CardHeader>
               <CardTitle>Top Performers</CardTitle>
               <CardDescription>
-                Agents with the most clients and deals
+                {labels.agents} with the most clients and {labels.deals.toLowerCase()}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -305,7 +307,7 @@ export default function AgentsPage() {
                             <p className="font-medium">{agent.clients?.length || 0}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Deals</p>
+                            <p className="text-muted-foreground">{labels.deals}</p>
                             <p className="font-medium">{agent.deals?.length || 0}</p>
                           </div>
                         </div>
@@ -320,21 +322,21 @@ export default function AgentsPage() {
         {/* Agent Directory - Panel Layout */}
         <Card>
           <CardHeader>
-            <CardTitle>Agent Directory</CardTitle>
+            <CardTitle>{labels.agent} Directory</CardTitle>
             <CardDescription>
-              {isLoading ? 'Loading...' : `Showing ${agentsResponse?.data.length || 0} of ${agentsResponse?.meta.total || 0} agents`}
+              {isLoading ? 'Loading...' : `Showing ${agentsResponse?.data.length || 0} of ${agentsResponse?.meta.total || 0} ${labels.agents.toLowerCase()}`}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="text-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Loading agents...</p>
+                <p className="text-sm text-muted-foreground">Loading {labels.agents.toLowerCase()}...</p>
               </div>
             ) : agentsResponse?.data.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <UserCheck className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p>No agents found matching your criteria</p>
+                <p>No {labels.agents.toLowerCase()} found matching your criteria</p>
               </div>
             ) : (
               <div ref={containerRef} className="relative">
@@ -359,7 +361,7 @@ export default function AgentsPage() {
                     >
                       <AgentDetailsPanel
                         agent={selectedAgent}
-                        emptyMessage="Select an agent to view details"
+                        emptyMessage={`Select an ${labels.agent.toLowerCase()} to view details`}
                         onClose={() => setSelectedAgentId(null)}
                       />
                     </div>

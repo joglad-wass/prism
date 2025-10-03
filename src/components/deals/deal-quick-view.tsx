@@ -20,6 +20,7 @@ import {
   Clock,
   Percent
 } from 'lucide-react'
+import { useLabels } from '../../hooks/useLabels'
 
 export interface DealQuickViewData {
   id: string
@@ -57,6 +58,7 @@ interface DealQuickViewProps {
 }
 
 export function DealQuickView({ deal, open, onOpenChange, onViewDetails }: DealQuickViewProps) {
+  const { labels } = useLabels()
   if (!deal) return null
 
   const getStageVariant = (stage: string) => {
@@ -125,7 +127,7 @@ export function DealQuickView({ deal, open, onOpenChange, onViewDetails }: DealQ
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Deal Amount</span>
+                <span className="text-sm font-medium">{labels.deal} Amount</span>
               </div>
               <span className="text-sm font-semibold">{formatCurrency(deal.amount)}</span>
             </div>
@@ -239,7 +241,7 @@ export function DealQuickView({ deal, open, onOpenChange, onViewDetails }: DealQ
                 onOpenChange(false)
               }}
             >
-              View Deal Details
+              View {labels.deal} Details
             </Button>
           </div>
         </div>

@@ -30,12 +30,14 @@ import { DealListPanel } from './deal-list-panel'
 import { DealDetailsPanel } from './deal-details-panel'
 import { BrandListPanel } from './brand-list-panel'
 import { BrandDetailsPanel } from './brand-details-panel'
+import { useLabels } from '../../hooks/useLabels'
 
 interface TalentDealsProps {
   talent: TalentDetail
 }
 
 export function TalentDeals({ talent }: TalentDealsProps) {
+  const { labels } = useLabels()
   const router = useRouter()
   const [splitPercentage, setSplitPercentage] = useState(talent.marketingFeePercentage || 15)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -300,7 +302,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Briefcase className="h-4 w-4 text-blue-500" />
-              <span className="text-sm font-medium">Total Deals</span>
+              <span className="text-sm font-medium">Total {labels.deals}</span>
             </div>
             <div className="text-2xl font-bold">{deals.length}</div>
           </CardContent>
@@ -310,7 +312,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <DollarSign className="h-4 w-4 text-slate-500" />
-              <span className="text-sm font-medium">Total Deal Revenue</span>
+              <span className="text-sm font-medium">Total {labels.deal} Revenue</span>
             </div>
             <div className="text-2xl font-bold">
               {formatCurrency(deals.reduce((sum, deal) => sum + deal.amount, 0))}
@@ -394,7 +396,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
       {/* Deals Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="all">All Deals</TabsTrigger>
+          <TabsTrigger value="all">All {labels.deals}</TabsTrigger>
           <TabsTrigger value="progress">In Progress</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
           <TabsTrigger value="brands">By Brand</TabsTrigger>
@@ -407,14 +409,14 @@ export function TalentDeals({ talent }: TalentDealsProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Briefcase className="h-5 w-5" />
-                  All Deals ({deals.length})
+                  All {labels.deals} ({deals.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {deals.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                    <p>No deals found</p>
+                    <p>No {labels.deals.toLowerCase()} found</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -531,7 +533,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
                       ? selectedProduct.Project_Deliverables__c || selectedProduct.Product_Name__c || 'Deliverable Details'
                       : selectedDealForView
                         ? selectedDealForView.name
-                        : deals[0]?.name || 'Select a deal or deliverable to view details'}
+                        : deals[0]?.name || `Select a ${labels.deal.toLowerCase()} or deliverable to view details`}
                   </CardTitle>
                   {selectedProduct && (
                     <Button
@@ -539,7 +541,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
                       size="sm"
                       onClick={() => setSelectedProduct(null)}
                     >
-                      Back to Deal
+                      Back to {labels.deal}
                     </Button>
                   )}
                   {!selectedProduct && (selectedDealForView || deals[0]) && (
@@ -591,10 +593,10 @@ export function TalentDeals({ talent }: TalentDealsProps) {
 
                     {/* Associated Deal Info */}
                     <div className="space-y-4">
-                      <h3 className="text-sm font-semibold">Associated Deal</h3>
+                      <h3 className="text-sm font-semibold">Associated {labels.deal}</h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <div className="text-sm text-muted-foreground mb-1">Deal Name</div>
+                          <div className="text-sm text-muted-foreground mb-1">{labels.deal} Name</div>
                           <div className="text-sm font-medium">{selectedProduct.deal.name}</div>
                         </div>
                         <div>
@@ -678,7 +680,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
                   </div>
                 ) : !selectedDealForView && !deals[0] ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    <p>No deals available</p>
+                    <p>No {labels.deals.toLowerCase()} available</p>
                   </div>
                 ) : (
                   <div className="space-y-6">
@@ -691,7 +693,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
                             <div className="p-4 border rounded-lg">
                               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                                 <DollarSign className="h-4 w-4" />
-                                Deal Amount
+                                {labels.deal} Amount
                               </div>
                               <div className="text-2xl font-bold">
                                 {formatCurrency(activeDeal.amount)}
@@ -721,7 +723,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
 
                           {/* Deal Information */}
                           <div className="space-y-4">
-                            <h3 className="text-sm font-semibold">Deal Information</h3>
+                            <h3 className="text-sm font-semibold">{labels.deal} Information</h3>
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <div className="text-sm text-muted-foreground mb-1">Brand</div>
@@ -815,7 +817,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
                 {inProgressDeals.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                    <p>No deals in progress</p>
+                    <p>No {labels.deals.toLowerCase()} in progress</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -930,7 +932,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
                       ? selectedProduct.Project_Deliverables__c || selectedProduct.Product_Name__c || 'Deliverable Details'
                       : selectedDealForView
                         ? selectedDealForView.name
-                        : inProgressDeals[0]?.name || 'Select a deal or deliverable'}
+                        : inProgressDeals[0]?.name || `Select a ${labels.deal.toLowerCase()} or deliverable`}
                   </CardTitle>
                   {selectedProduct && (
                     <Button
@@ -938,7 +940,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
                       size="sm"
                       onClick={() => setSelectedProduct(null)}
                     >
-                      Back to Deal
+                      Back to {labels.deal}
                     </Button>
                   )}
                   {!selectedProduct && (selectedDealForView || inProgressDeals[0]) && (
@@ -988,10 +990,10 @@ export function TalentDeals({ talent }: TalentDealsProps) {
                     <Separator />
 
                     <div className="space-y-4">
-                      <h3 className="text-sm font-semibold">Associated Deal</h3>
+                      <h3 className="text-sm font-semibold">Associated {labels.deal}</h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <div className="text-sm text-muted-foreground mb-1">Deal Name</div>
+                          <div className="text-sm text-muted-foreground mb-1">{labels.deal} Name</div>
                           <div className="text-sm font-medium">{selectedProduct.deal.name}</div>
                         </div>
                         <div>
@@ -1071,7 +1073,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
                   </div>
                 ) : !selectedDealForView && !inProgressDeals[0] ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    <p>No deals in progress</p>
+                    <p>No {labels.deals.toLowerCase()} in progress</p>
                   </div>
                 ) : (
                   <div className="space-y-6">
@@ -1083,7 +1085,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
                             <div className="p-4 border rounded-lg">
                               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                                 <DollarSign className="h-4 w-4" />
-                                Deal Amount
+                                {labels.deal} Amount
                               </div>
                               <div className="text-2xl font-bold">
                                 {formatCurrency(activeDeal.amount)}
@@ -1112,7 +1114,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
                           <Separator />
 
                           <div className="space-y-4">
-                            <h3 className="text-sm font-semibold">Deal Information</h3>
+                            <h3 className="text-sm font-semibold">{labels.deal} Information</h3>
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <div className="text-sm text-muted-foreground mb-1">Brand</div>
@@ -1211,7 +1213,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
               selectedDeal={selectedDealForView}
               selectedProduct={selectedProduct}
               defaultDeal={completedDeals[0]}
-              emptyMessage="No completed deals"
+              emptyMessage={`No completed ${labels.deals.toLowerCase()}`}
               onBackToDeal={() => setSelectedProduct(null)}
               formatCurrency={formatCurrency}
               formatDate={formatDate}

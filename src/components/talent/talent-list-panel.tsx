@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Badge } from '../ui/badge'
 import { Calendar } from 'lucide-react'
+import { useLabels } from '../../hooks/useLabels'
 
 interface TalentListPanelProps {
   talents: Array<{
@@ -32,6 +33,8 @@ export function TalentListPanel({
   formatDate,
   getStatusVariant,
 }: TalentListPanelProps) {
+  const { labels } = useLabels()
+
   return (
     <div className={selectedTalentId ? 'lg:col-span-1' : ''}>
       <div className={`space-y-2 ${selectedTalentId ? '' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3'}`}>
@@ -73,7 +76,7 @@ export function TalentListPanel({
               </div>
               <div className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                Last Deal: {formatDate(talent.lastDealDate)}
+                Last {labels.deal}: {formatDate(talent.lastDealDate)}
               </div>
             </div>
           </div>

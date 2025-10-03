@@ -14,6 +14,7 @@ import {
   User as UserIcon,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useLabels } from '../../hooks/useLabels'
 
 interface DealDetailsPanelProps {
   selectedDeal: any | null
@@ -34,6 +35,7 @@ export function DealDetailsPanel({
   formatCurrency,
   formatDate,
 }: DealDetailsPanelProps) {
+  const { labels } = useLabels()
   const router = useRouter()
 
   const activeDeal = selectedDeal || defaultDeal
@@ -62,7 +64,7 @@ export function DealDetailsPanel({
           </CardTitle>
           {selectedProduct && (
             <Button variant="outline" size="sm" onClick={onBackToDeal}>
-              Back to Deal
+              Back to {labels.deal}
             </Button>
           )}
           {!selectedProduct && activeDeal && (
@@ -114,10 +116,10 @@ export function DealDetailsPanel({
 
             {/* Associated Deal Info */}
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold">Associated Deal</h3>
+              <h3 className="text-sm font-semibold">Associated {labels.deal}</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm text-muted-foreground mb-1">Deal Name</div>
+                  <div className="text-sm text-muted-foreground mb-1">{labels.deal} Name</div>
                   <div className="text-sm font-medium">{selectedProduct.deal.name}</div>
                 </div>
                 <div>
@@ -208,7 +210,7 @@ export function DealDetailsPanel({
               <div className="p-4 border rounded-lg">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                   <DollarSign className="h-4 w-4" />
-                  Deal Amount
+                  {labels.deal} Amount
                 </div>
                 <div className="text-2xl font-bold">{formatCurrency(activeDeal.amount)}</div>
               </div>
@@ -236,7 +238,7 @@ export function DealDetailsPanel({
 
             {/* Deal Information */}
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold">Deal Information</h3>
+              <h3 className="text-sm font-semibold">{labels.deal} Information</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="text-sm text-muted-foreground mb-1">Brand</div>

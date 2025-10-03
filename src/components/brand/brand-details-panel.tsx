@@ -9,6 +9,7 @@ import { Separator } from '../ui/separator'
 import { Building2, User, Building, DollarSign, TrendingUp, Activity, ExternalLink, X } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
 import Image from 'next/image'
+import { useLabels } from '../../hooks/useLabels'
 
 interface BrandDetailsPanelProps {
   brand: {
@@ -45,6 +46,7 @@ export function BrandDetailsPanel({
   getTypeVariant,
   onClose,
 }: BrandDetailsPanelProps) {
+  const { labels } = useLabels()
   const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -176,14 +178,14 @@ export function BrandDetailsPanel({
                 <div className="p-4 border rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Building2 className="h-4 w-4" />
-                    Total Deals
+                    Total {labels.deals}
                   </div>
                   <div className="text-2xl font-bold">{brand.dealCount || 0}</div>
                 </div>
                 <div className="p-4 border rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <TrendingUp className="h-4 w-4" />
-                    Active Deals
+                    Active {labels.deals}
                   </div>
                   <div className="text-2xl font-bold">{brand.activeDeals || 0}</div>
                 </div>

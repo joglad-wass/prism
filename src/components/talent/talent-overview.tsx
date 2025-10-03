@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Separator } from '../ui/separator'
+import { useLabels } from '../../hooks/useLabels'
 import {
   User,
   Building,
@@ -20,6 +21,8 @@ interface TalentOverviewProps {
 }
 
 export function TalentOverview({ talent }: TalentOverviewProps) {
+  const { labels } = useLabels()
+
   // Helper functions for multi-agent support
   const getPrimaryAgent = () => {
     return talent.agents?.find(ta => ta.isPrimary)?.agent || talent.agents?.[0]?.agent || null
@@ -27,7 +30,7 @@ export function TalentOverview({ talent }: TalentOverviewProps) {
 
   const formatAgentsDisplay = () => {
     if (!talent.agents || talent.agents.length === 0) {
-      return 'No agent assigned'
+      return `No ${labels.agent.toLowerCase()} assigned`
     }
 
     if (talent.agents.length === 1) {
@@ -119,7 +122,7 @@ export function TalentOverview({ talent }: TalentOverviewProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Agent{talent.agents?.length > 1 ? 's' : ''}</span>
+            <span className="text-sm font-medium">{talent.agents?.length > 1 ? labels.agents : labels.agent}</span>
             <span className="text-sm">{formatAgentsDisplay()}</span>
           </div>
 

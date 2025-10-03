@@ -1,11 +1,14 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Separator } from '../ui/separator'
 import { Users, DollarSign, TrendingUp, Briefcase, ExternalLink, MapPin, X } from 'lucide-react'
+import { useLabels } from '../../hooks/useLabels'
 
 interface TalentDetailsPanelProps {
   talent: {
@@ -24,8 +27,19 @@ interface TalentDetailsPanelProps {
     lastActivity?: string
     agents?: {
       isPrimary: boolean
+      agentId: string
       agent: {
+        id: string
         name: string
+      }
+    }[]
+    deals?: {
+      deal: {
+        id: string
+        Name: string
+        Amount?: number
+        Status__c: string
+        StageName?: string
       }
     }[]
   } | null
@@ -44,6 +58,10 @@ export function TalentDetailsPanel({
   getStatusVariant,
   onClose,
 }: TalentDetailsPanelProps) {
+  const { labels } = useLabels()
+  const router = useRouter()
+  const [showAllDeals, setShowAllDeals] = useState(false)
+
   return (
     <Card className="lg:col-span-2">
       <CardHeader>
@@ -168,11 +186,19 @@ export function TalentDetailsPanel({
               <>
                 <Separator />
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold">Agents</h3>
+                  <h3 className="text-sm font-semibold">{labels.agents}</h3>
                   <div className="space-y-2">
                     {talent.agents.map((ta, index) => (
-                      <div key={index} className="text-sm">
-                        {ta.agent.name}
+                      <div
+                        key={index}
+                        className="p-2 border rounded text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                          if (ta.agentId) {
+                            router.push(`/agents?id=${ta.agentId}`)
+                          }
+                        }}
+                      >
+                        <span className="font-medium">{ta.agent.name}</span>
                         {ta.isPrimary && (
                           <Badge variant="outline" className="ml-2 text-xs">
                             Primary
@@ -194,7 +220,7 @@ export function TalentDetailsPanel({
                 <div className="p-4 border rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Briefcase className="h-4 w-4" />
-                    Total Deals
+                    Total {labels.deals}
                   </div>
                   <div className="text-2xl font-bold">{talent.dealCount || 0}</div>
                 </div>
@@ -210,7 +236,7 @@ export function TalentDetailsPanel({
                 <div className="p-4 border rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <TrendingUp className="h-4 w-4" />
-                    Wasserman Revenue
+                    Commission 
                   </div>
                   <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                     {formatCurrency(talent.wassRevenue)}
@@ -219,14 +245,55 @@ export function TalentDetailsPanel({
               </div>
             </div>
 
-            {talent.lastActivity && (
+            {/* Active Deals */}
+            {talent.deals && talent.deals.length > 0 && (
               <>
                 <Separator />
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold">Activity</h3>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Last Deal Date</div>
-                    <div className="text-sm font-medium">{formatDate(talent.lastActivity)}</div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold">Recent {labels.deals}</h3>
+                    {talent.deals.length > 3 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowAllDeals(!showAllDeals)}
+                      >
+                        {showAllDeals ? 'Show Less' : `Show All (${talent.deals.length})`}
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {(showAllDeals ? talent.deals : talent.deals.slice(0, 3)).map((dealClient: any, index: number) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 border rounded cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                          if (dealClient.deal?.id) {
+                            router.push(`/deals/${dealClient.deal.id}`)
+                          }
+                        }}
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            {/* <Briefcase className="h-3 w-3 text-muted-foreground" /> */}
+                            <span className="font-medium text-sm">{dealClient.deal?.Name || 'Unnamed Deal'}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            {dealClient.deal?.StageName && (
+                              <Badge variant="secondary" className="text-xs">
+                                {dealClient.deal.StageName}
+                              </Badge>
+                            )}
+                            {dealClient.deal?.Amount && (
+                              <div className="flex items-center gap-1">
+                                {/* <DollarSign className="h-3 w-3" /> */}
+                                <span>{formatCurrency(dealClient.deal.Amount)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </>

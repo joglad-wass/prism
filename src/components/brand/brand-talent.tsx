@@ -14,6 +14,7 @@ import {
 } from '../ui/table'
 import { Users, DollarSign, Briefcase, TrendingUp } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useLabels } from '../../hooks/useLabels'
 
 import { Brand } from '../../types'
 
@@ -32,6 +33,7 @@ interface BrandTalentProps {
 }
 
 export function BrandTalent({ brand }: BrandTalentProps) {
+  const { labels } = useLabels()
   const router = useRouter()
   const [selectedTalent, setSelectedTalent] = useState<any>(null)
 
@@ -109,7 +111,7 @@ export function BrandTalent({ brand }: BrandTalentProps) {
                       <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Briefcase className="h-3 w-3" />
-                          {talentClient.dealCount} deals
+                          {talentClient.dealCount} {talentClient.dealCount === 1 ? labels.deal.toLowerCase() : labels.deals.toLowerCase()}
                         </div>
                         <div className="flex items-center gap-1">
                           <DollarSign className="h-3 w-3" />
@@ -129,13 +131,13 @@ export function BrandTalent({ brand }: BrandTalentProps) {
       <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle>
-            {activeTalent ? `${activeTalent.client.Name}'s Deals with ${brand.name}` : 'Select a talent to view details'}
+            {activeTalent ? `${activeTalent.client.Name}'s ${labels.deals} with ${brand.name}` : 'Select a talent to view details'}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {!activeTalent ? (
             <div className="text-center py-8 text-muted-foreground">
-              <p>Select a talent from the list to view their deals</p>
+              <p>Select a talent from the list to view their {labels.deals.toLowerCase()}</p>
             </div>
           ) : (
             <div className="space-y-6">
@@ -144,7 +146,7 @@ export function BrandTalent({ brand }: BrandTalentProps) {
                 <div className="p-4 border rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Briefcase className="h-4 w-4" />
-                    Total Deals
+                    Total {labels.deals}
                   </div>
                   <div className="text-2xl font-bold">{activeTalent.dealCount}</div>
                 </div>
@@ -168,18 +170,18 @@ export function BrandTalent({ brand }: BrandTalentProps) {
 
               {/* Deals Table */}
               <div>
-                <h3 className="text-sm font-semibold mb-3">Deal History</h3>
+                <h3 className="text-sm font-semibold mb-3">{labels.deal} History</h3>
                 {talentDeals.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                    <p>No deals found</p>
+                    <p>No {labels.deals.toLowerCase()} found</p>
                   </div>
                 ) : (
                   <div className="rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Deal Name</TableHead>
+                          <TableHead>{labels.deal} Name</TableHead>
                           <TableHead>Stage</TableHead>
                           <TableHead>Amount</TableHead>
                           <TableHead>Close Date</TableHead>

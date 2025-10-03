@@ -8,9 +8,10 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card'
-import { Settings, Users, UserCog } from 'lucide-react'
+import { Settings, Users, UserCog, Tag } from 'lucide-react'
 import { CostCenterGroupManager } from '../../components/settings/cost-center-group-manager'
 import { UserManager } from '../../components/settings/user-manager'
+import { LabelMappingManager } from '../../components/settings/label-mapping-manager'
 import { useUser } from '../../contexts/user-context'
 
 export default function SettingsPage() {
@@ -46,6 +47,24 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <UserManager />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Label Mappings - Admin Only */}
+        {user?.userType === 'ADMINISTRATOR' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Tag className="h-5 w-5" />
+                Division Label Mappings
+              </CardTitle>
+              <CardDescription>
+                Customize terminology for each division (e.g., Agent → Manager, Deal → Slip)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LabelMappingManager />
             </CardContent>
           </Card>
         )}

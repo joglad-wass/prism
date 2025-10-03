@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { Deal } from '../../types'
+import { useLabels } from '../../hooks/useLabels'
 
 interface DealTimelineProps {
   deal: Deal
@@ -35,6 +36,7 @@ interface StageInfo {
 }
 
 export function DealTimeline({ deal, onNavigateToSchedule }: DealTimelineProps) {
+  const { labels } = useLabels()
   const [calendarDate, setCalendarDate] = useState(new Date())
 
   const formatDate = (dateString?: string) => {
@@ -77,7 +79,7 @@ export function DealTimeline({ deal, onNavigateToSchedule }: DealTimelineProps) 
     if (startDate) {
       dates.push({
         date: new Date(startDate),
-        label: 'Deal Start',
+        label: `${labels.deal} Start`,
         type: 'start'
       })
     }
@@ -375,10 +377,10 @@ export function DealTimeline({ deal, onNavigateToSchedule }: DealTimelineProps) 
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Deal Timeline
+                {labels.deal} Timeline
               </CardTitle>
               <CardDescription>
-                Track the progression through deal stages
+                Track the progression through {labels.deal.toLowerCase()} stages
               </CardDescription>
             </div>
             {!isClosedWon && !isClosedLost && (
@@ -447,10 +449,10 @@ export function DealTimeline({ deal, onNavigateToSchedule }: DealTimelineProps) 
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Deal Calendar
+            {labels.deal} Calendar
           </CardTitle>
           <CardDescription>
-            Important dates and milestones for this deal
+            Important dates and milestones for this {labels.deal.toLowerCase()}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -605,7 +607,7 @@ export function DealTimeline({ deal, onNavigateToSchedule }: DealTimelineProps) 
                                       {/* Deal Information */}
                                       <div className="space-y-1">
                                         <div className="text-xs">
-                                          <span className="font-medium">Deal:</span> {deal.Name}
+                                          <span className="font-medium">{labels.deal}:</span> {deal.Name}
                                         </div>
                                         {deal.brand?.name && (
                                           <div className="text-xs">
@@ -670,12 +672,12 @@ export function DealTimeline({ deal, onNavigateToSchedule }: DealTimelineProps) 
                                       {/* Start/Close Date Details */}
                                       {event.type === 'start' && (
                                         <div className="text-xs text-muted-foreground border-t pt-2">
-                                          This is when the deal officially started
+                                          This is when the {labels.deal.toLowerCase()} officially started
                                         </div>
                                       )}
                                       {event.type === 'close' && (
                                         <div className="text-xs text-muted-foreground border-t pt-2">
-                                          Expected closing date for this deal
+                                          Expected closing date for this {labels.deal.toLowerCase()}
                                         </div>
                                       )}
                                     </div>

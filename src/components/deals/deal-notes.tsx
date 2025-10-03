@@ -33,6 +33,7 @@ import {
 } from 'lucide-react'
 import { Deal } from '../../types'
 import { useNotes } from '../../hooks/useNotes'
+import { useLabels } from '../../hooks/useLabels'
 
 interface DealNotesProps {
   deal: Deal
@@ -41,6 +42,7 @@ interface DealNotesProps {
 import { Note } from '../../types'
 
 export function DealNotes({ deal }: DealNotesProps) {
+  const { labels } = useLabels()
   const { createNote, updateNote, deleteNote, isLoading } = useNotes()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -230,7 +232,7 @@ export function DealNotes({ deal }: DealNotesProps) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Deal Notes</CardTitle>
+              <CardTitle>{labels.deal} Notes</CardTitle>
               <CardDescription>
                 Track communications, updates, and important information
               </CardDescription>
@@ -247,7 +249,7 @@ export function DealNotes({ deal }: DealNotesProps) {
                 <DialogHeader>
                   <DialogTitle>Add New Note</DialogTitle>
                   <DialogDescription>
-                    Add a note or update about this deal
+                    Add a note or update about this {labels.deal.toLowerCase()}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -409,7 +411,7 @@ export function DealNotes({ deal }: DealNotesProps) {
             <div className="text-center py-8 text-muted-foreground">
               <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <h3 className="font-medium mb-2">No notes yet</h3>
-              <p className="text-sm">Start tracking deal progress by adding your first note</p>
+              <p className="text-sm">Start tracking {labels.deal.toLowerCase()} progress by adding your first note</p>
             </div>
           ) : (
             <div className="space-y-4">

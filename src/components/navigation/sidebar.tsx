@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 import { cn } from '../../lib/utils'
 import { useTheme } from '../../contexts/theme-context'
 import { CostCenterSelector } from './cost-center-selector'
+import { useLabels } from '../../hooks/useLabels'
 import {
   Users,
   Building2,
@@ -16,43 +17,44 @@ import {
   BarChart3
 } from 'lucide-react'
 
-const navigation = [
-  {
-    name: 'Dashboard',
-    href: '/',
-    icon: Home,
-  },
-  {
-    name: 'Talent Clients',
-    href: '/talent',
-    icon: Users,
-  },
-  {
-    name: 'Brands',
-    href: '/brands',
-    icon: Building2,
-  },
-  {
-    name: 'Agents',
-    href: '/agents',
-    icon: UserCheck,
-  },
-  {
-    name: 'Deals',
-    href: '/deals',
-    icon: Briefcase,
-  },
-  {
-    name: 'Analytics',
-    href: '/analytics',
-    icon: BarChart3,
-  },
-]
-
 export function Sidebar() {
   const pathname = usePathname()
   const { theme } = useTheme()
+  const { labels } = useLabels()
   const [mounted, setMounted] = useState(false)
+
+  const navigation = [
+    {
+      name: 'Dashboard',
+      href: '/',
+      icon: Home,
+    },
+    {
+      name: 'Talent Clients',
+      href: '/talent',
+      icon: Users,
+    },
+    {
+      name: 'Brands',
+      href: '/brands',
+      icon: Building2,
+    },
+    {
+      name: labels.agents,
+      href: '/agents',
+      icon: UserCheck,
+    },
+    {
+      name: labels.deals,
+      href: '/deals',
+      icon: Briefcase,
+    },
+    {
+      name: 'Analytics',
+      href: '/analytics',
+      icon: BarChart3,
+    },
+  ]
 
   useEffect(() => {
     setMounted(true)

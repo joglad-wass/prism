@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 
 import { Brand } from '../../types'
+import { useLabels } from '../../hooks/useLabels'
 
 interface BrandOverviewProps {
   brand: Brand & {
@@ -36,6 +37,8 @@ interface BrandOverviewProps {
 }
 
 export function BrandOverview({ brand }: BrandOverviewProps) {
+  const { labels } = useLabels()
+
   const formatCurrency = (amount?: number) => {
     if (!amount) return '$0'
     return new Intl.NumberFormat('en-US', {
@@ -112,21 +115,21 @@ export function BrandOverview({ brand }: BrandOverviewProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Total Deals</span>
+              <span className="text-sm font-medium">Total {labels.deals}</span>
               <span className="text-2xl font-bold">{brand.metrics.dealCount}</span>
             </div>
 
             <Separator />
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Active Deals</span>
+              <span className="text-sm font-medium">Active {labels.deals}</span>
               <span className="text-xl font-semibold text-green-600 dark:text-green-400">
                 {brand.metrics.activeDeals}
               </span>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Completed Deals</span>
+              <span className="text-sm font-medium">Completed {labels.deals}</span>
               <span className="text-xl font-semibold text-blue-600 dark:text-blue-400">
                 {brand.metrics.completedDeals}
               </span>

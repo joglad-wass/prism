@@ -13,6 +13,12 @@ import {
   CardTitle,
 } from '../../components/ui/card'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../../components/ui/tooltip'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -25,10 +31,12 @@ import { TalentFilters } from '../../types'
 import { TalentListPanel } from '../../components/talent/talent-list-panel'
 import { TalentDetailsPanel } from '../../components/talent/talent-details-panel'
 import { useFilter } from '../../contexts/filter-context'
+import { useUser } from '../../contexts/user-context'
 import { Search, Plus, Users, Loader2 } from 'lucide-react'
 
 export default function TalentsPage() {
   const { filterSelection } = useFilter()
+  const { user } = useUser()
   const [filters, setFilters] = useState<Omit<TalentFilters, 'page' | 'limit'>>({})
   const [selectedTalentId, setSelectedTalentId] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState('')
@@ -213,10 +221,28 @@ export default function TalentsPage() {
               Manage your talent roster and client relationships
             </p>
           </div>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Talent
-          </Button>
+          {user?.userType === 'ADMINISTRATOR' ? (
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Talent
+            </Button>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button disabled>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Talent
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Please use Talent Generator to create Talent records.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
 
         {/* Stats */}

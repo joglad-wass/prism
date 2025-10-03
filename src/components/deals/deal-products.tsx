@@ -8,6 +8,7 @@ import { Separator } from '../ui/separator'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Textarea } from '../ui/textarea'
+import { useLabels } from '../../hooks/useLabels'
 import {
   Dialog,
   DialogContent,
@@ -58,6 +59,7 @@ interface DealProductsProps {
 }
 
 export function DealProducts({ deal, highlightedScheduleId, highlightedProductId, onNavigateToPayment }: DealProductsProps) {
+  const { labels } = useLabels()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -1537,7 +1539,7 @@ export function DealProducts({ deal, highlightedScheduleId, highlightedProductId
                                                   <div key={idx} className="grid grid-cols-12 gap-2 items-center p-2 border rounded-lg bg-background">
                                                     <div className="col-span-3 relative">
                                                       <Input
-                                                        placeholder="Agent/Agency..."
+                                                        placeholder={`${labels.agent}/Agency...`}
                                                         value={split.agentName}
                                                         onChange={(e) => {
                                                           e.stopPropagation()

@@ -16,8 +16,10 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Camera, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useLabels } from '../../hooks/useLabels'
 
 export function ProfileForm() {
+  const { labels } = useLabels()
   const { user, isLoading: userLoading, updateUser } = useUser()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [divisions, setDivisions] = useState<string[]>([])
@@ -219,6 +221,7 @@ export function ProfileForm() {
           <div className="space-y-2">
             <Label htmlFor="division">Division</Label>
             <Select
+              key={`division-${formData.division}`}
               value={formData.division}
               onValueChange={(value) => setFormData({ ...formData, division: value })}
             >
@@ -290,7 +293,7 @@ export function ProfileForm() {
                 <SelectValue placeholder="Select user type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="AGENT">Agent</SelectItem>
+                <SelectItem value="AGENT">{labels.agent}</SelectItem>
                 <SelectItem
                   value="ADMINISTRATOR"
                   disabled={user?.userType !== 'ADMINISTRATOR'}
@@ -302,7 +305,7 @@ export function ProfileForm() {
             <p className="text-sm text-muted-foreground">
               {formData.userType === 'ADMINISTRATOR'
                 ? 'Administrators can filter by all cost centers'
-                : 'Agents can only filter by their assigned cost center or group'}
+                : `${labels.agents} can only filter by their assigned cost center or group`}
             </p>
           </div>
 

@@ -31,6 +31,7 @@ import { Label } from '../ui/label'
 import { Badge } from '../ui/badge'
 import { Loader2, Pencil, Shield, User, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
+import { useLabels } from '../../hooks/useLabels'
 
 interface User {
   id: string
@@ -49,6 +50,7 @@ interface CostCenterOption {
 }
 
 export function UserManager() {
+  const { labels } = useLabels()
   const { user: currentUser, refreshUsers, availableUsers } = useUser()
   const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -265,7 +267,7 @@ export function UserManager() {
                       ) : (
                         <>
                           <User className="h-3 w-3 mr-1" />
-                          Agent
+                          {labels.agent}
                         </>
                       )}
                     </Badge>
@@ -361,7 +363,7 @@ export function UserManager() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="AGENT">Agent</SelectItem>
+                    <SelectItem value="AGENT">{labels.agent}</SelectItem>
                     <SelectItem value="ADMINISTRATOR">Administrator</SelectItem>
                   </SelectContent>
                 </Select>
@@ -480,7 +482,7 @@ export function UserManager() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="AGENT">Agent</SelectItem>
+                  <SelectItem value="AGENT">{labels.agent}</SelectItem>
                   <SelectItem value="ADMINISTRATOR">Administrator</SelectItem>
                 </SelectContent>
               </Select>

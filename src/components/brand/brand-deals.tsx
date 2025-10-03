@@ -26,12 +26,14 @@ import {
 import { useRouter } from 'next/navigation'
 
 import { Brand } from '../../types'
+import { useLabels } from '../../hooks/useLabels'
 
 interface BrandDealsProps {
   brand: Brand
 }
 
 export function BrandDeals({ brand }: BrandDealsProps) {
+  const { labels } = useLabels()
   const router = useRouter()
   const [selectedDeal, setSelectedDeal] = useState<any>(null)
 
@@ -92,7 +94,7 @@ export function BrandDeals({ brand }: BrandDealsProps) {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Deals</CardTitle>
+              <CardTitle className="text-sm font-medium">Total {labels.deals}</CardTitle>
               <Briefcase className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -102,7 +104,7 @@ export function BrandDeals({ brand }: BrandDealsProps) {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Deals</CardTitle>
+              <CardTitle className="text-sm font-medium">Active {labels.deals}</CardTitle>
               <Briefcase className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -138,14 +140,14 @@ export function BrandDeals({ brand }: BrandDealsProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Briefcase className="h-5 w-5" />
-            All Deals ({brand.deals?.length || 0})
+            All {labels.deals} ({brand.deals?.length || 0})
           </CardTitle>
         </CardHeader>
         <CardContent>
           {!brand.deals || brand.deals.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
-              <p>No deals found for this brand</p>
+              <p>No {labels.deals.toLowerCase()} found for this brand</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -191,7 +193,7 @@ export function BrandDeals({ brand }: BrandDealsProps) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>
-              {activeDeal ? activeDeal.Name : 'Select a deal to view details'}
+              {activeDeal ? activeDeal.Name : `Select a ${labels.deal.toLowerCase()} to view details`}
             </CardTitle>
             {activeDeal && (
               <Button
@@ -208,7 +210,7 @@ export function BrandDeals({ brand }: BrandDealsProps) {
         <CardContent>
           {!activeDeal ? (
             <div className="text-center py-8 text-muted-foreground">
-              <p>Select a deal from the list to view its details</p>
+              <p>Select a {labels.deal.toLowerCase()} from the list to view its details</p>
             </div>
           ) : (
             <div className="space-y-6">
@@ -217,7 +219,7 @@ export function BrandDeals({ brand }: BrandDealsProps) {
                 <div className="p-4 border rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <DollarSign className="h-4 w-4" />
-                    Deal Amount
+                    {labels.deal} Amount
                   </div>
                   <div className="text-2xl font-bold">
                     {formatCurrency(activeDeal.Amount ? Number(activeDeal.Amount) : 0)}
@@ -245,7 +247,7 @@ export function BrandDeals({ brand }: BrandDealsProps) {
 
               {/* Deal Information */}
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold">Deal Information</h3>
+                <h3 className="text-sm font-semibold">{labels.deal} Information</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-sm text-muted-foreground mb-1">Stage</div>
