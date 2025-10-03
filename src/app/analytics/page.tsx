@@ -14,6 +14,7 @@ import { useTalents } from '../../hooks/useTalents'
 import { useBrands } from '../../hooks/useBrands'
 import { useAgents } from '../../hooks/useAgents'
 import { useDeals } from '../../hooks/useDeals'
+import { useFilter } from '../../contexts/filter-context'
 import {
   BarChart3,
   TrendingUp,
@@ -28,10 +29,17 @@ import {
 } from 'lucide-react'
 
 export default function AnalyticsPage() {
-  const { data: talentsResponse } = useTalents({ limit: 1000 })
+  const { filterSelection } = useFilter()
+
+  const filterParams = {
+    ...(filterSelection.type === 'individual' && { costCenter: filterSelection.value || undefined }),
+    ...(filterSelection.type === 'group' && { costCenterGroup: filterSelection.value || undefined })
+  }
+
+  const { data: talentsResponse } = useTalents({ limit: 1000, ...filterParams })
   const { data: brandsResponse } = useBrands({ limit: 1000 })
-  const { data: agentsResponse } = useAgents({ hasDeals: true, limit: 100 })
-  const { data: dealsResponse } = useDeals({ limit: 1000 })
+  const { data: agentsResponse } = useAgents({ hasDeals: true, limit: 100, ...filterParams })
+  const { data: dealsResponse } = useDeals({ limit: 1000, ...filterParams })
 
   // Calculate analytics
   const talents = talentsResponse?.data || []

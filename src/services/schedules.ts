@@ -1,6 +1,17 @@
 import api from './api'
 import { Schedule, PaginatedResponse, ScheduleFilters } from '../types'
 
+export interface ScheduleAgentSplit {
+  id?: string
+  agentName: string
+  agentId?: string | null
+  splitPercent: number
+  splitAmount: number
+  scheduleId?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 export class ScheduleService {
   static async getSchedules(filters: ScheduleFilters = {}): Promise<PaginatedResponse<Schedule>> {
     const params = new URLSearchParams()
@@ -51,6 +62,32 @@ export class ScheduleService {
     if (limit) params.append('limit', limit.toString())
 
     const response = await api.get(`/schedules/by-product/${productId}?${params.toString()}`)
+    return response.data
+  }
+
+  // ===== Schedule Agent Splits =====
+
+  static async getScheduleSplits(scheduleId: string): Promise<ScheduleAgentSplit[]> {
+    const response = await api.get(`/schedules/${scheduleId}/splits`)
+    return response.data
+  }
+
+  static async createScheduleSplit(scheduleId: string, split: Omit<ScheduleAgentSplit, 'id' | 'scheduleId' | 'createdAt' | 'updatedAt'>): Promise<ScheduleAgentSplit> {
+    const response = await api.post(`/schedules/${scheduleId}/splits`, split)
+    return response.data
+  }
+
+  static async updateScheduleSplit(scheduleId: string, splitId: string, split: Partial<ScheduleAgentSplit>): Promise<ScheduleAgentSplit> {
+    const response = await api.put(`/schedules/${scheduleId}/splits/${splitId}`, split)
+    return response.data
+  }
+
+  static async deleteScheduleSplit(scheduleId: string, splitId: string): Promise<void> {
+    await api.delete(`/schedules/${scheduleId}/splits/${splitId}`)
+  }
+
+  static async batchUpdateScheduleSplits(scheduleId: string, splits: Omit<ScheduleAgentSplit, 'id' | 'scheduleId' | 'createdAt' | 'updatedAt'>[]): Promise<ScheduleAgentSplit[]> {
+    const response = await api.put(`/schedules/${scheduleId}/splits/batch`, { splits })
     return response.data
   }
 }

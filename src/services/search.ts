@@ -1,10 +1,22 @@
 import api from './api'
 import { SearchResult, TalentClient, Brand, Agent, Deal } from '../types'
 
+interface SearchFilters {
+  costCenter?: string | null
+  costCenterGroup?: string | null
+}
+
 export class SearchService {
-  static async globalSearch(query: string): Promise<SearchResult[]> {
+  static async globalSearch(query: string, filters?: SearchFilters): Promise<SearchResult[]> {
     const params = new URLSearchParams()
     params.append('q', query)
+
+    if (filters?.costCenter) {
+      params.append('costCenter', filters.costCenter)
+    }
+    if (filters?.costCenterGroup) {
+      params.append('costCenterGroup', filters.costCenterGroup)
+    }
 
     const response = await api.get(`/search?${params.toString()}`)
     const { data } = response.data
@@ -14,13 +26,17 @@ export class SearchService {
 
     // Process talents
     if (data.talents) {
-      data.talents.forEach((talent: TalentClient) => {
+      data.talents.forEach((talent: any) => {
         results.push({
           id: talent.id,
           type: 'talent',
-          title: talent.name,
+          title: talent.Name,
           subtitle: talent.location || talent.sport,
           category: talent.category,
+          sport: talent.sport,
+          team: talent.team,
+          status: talent.status,
+          agents: talent.agents,
         })
       })
     }
@@ -34,6 +50,9 @@ export class SearchService {
           title: brand.name,
           subtitle: brand.industry,
           category: brand.type,
+          industry: brand.industry,
+          status: brand.status,
+          owner: brand.owner,
         })
       })
     }
@@ -47,19 +66,28 @@ export class SearchService {
           title: agent.name,
           subtitle: agent.email,
           category: agent.title || 'Agent',
+          email: agent.email,
+          company: agent.company,
+          division: agent.division,
+          jobTitle: agent.title,
         })
       })
     }
 
     // Process deals
     if (data.deals) {
-      data.deals.forEach((deal: Deal) => {
+      data.deals.forEach((deal: any) => {
         results.push({
           id: deal.id,
           type: 'deal',
           title: deal.Name,
           subtitle: deal.brand?.name || 'Deal',
           category: deal.Status__c,
+          status: deal.Status__c,
+          stage: deal.StageName,
+          amount: deal.Amount,
+          brand: deal.brand,
+          owner: deal.owner,
         })
       })
     }
@@ -67,9 +95,16 @@ export class SearchService {
     return results
   }
 
-  static async getSuggestions(query?: string): Promise<SearchResult[]> {
+  static async getSuggestions(query?: string, filters?: SearchFilters): Promise<SearchResult[]> {
     const params = new URLSearchParams()
     if (query) params.append('q', query)
+
+    if (filters?.costCenter) {
+      params.append('costCenter', filters.costCenter)
+    }
+    if (filters?.costCenterGroup) {
+      params.append('costCenterGroup', filters.costCenterGroup)
+    }
 
     const response = await api.get(`/search/suggestions?${params.toString()}`)
 
@@ -80,13 +115,17 @@ export class SearchService {
 
       // Process using the same logic as globalSearch
       if (data.talents) {
-        data.talents.forEach((talent: TalentClient) => {
+        data.talents.forEach((talent: any) => {
           results.push({
             id: talent.id,
             type: 'talent',
-            title: talent.name,
+            title: talent.Name,
             subtitle: talent.location || talent.sport,
             category: talent.category,
+            sport: talent.sport,
+            team: talent.team,
+            status: talent.status,
+            agents: talent.agents,
           })
         })
       }
@@ -99,6 +138,9 @@ export class SearchService {
             title: brand.name,
             subtitle: brand.industry,
             category: brand.type,
+            industry: brand.industry,
+            status: brand.status,
+            owner: brand.owner,
           })
         })
       }
@@ -111,18 +153,27 @@ export class SearchService {
             title: agent.name,
             subtitle: agent.email,
             category: agent.title || 'Agent',
+            email: agent.email,
+            company: agent.company,
+            division: agent.division,
+            jobTitle: agent.title,
           })
         })
       }
 
       if (data.deals) {
-        data.deals.forEach((deal: Deal) => {
+        data.deals.forEach((deal: any) => {
           results.push({
             id: deal.id,
             type: 'deal',
             title: deal.Name,
             subtitle: deal.brand?.name || 'Deal',
             category: deal.Status__c,
+            status: deal.Status__c,
+            stage: deal.StageName,
+            amount: deal.Amount,
+            brand: deal.brand,
+            owner: deal.owner,
           })
         })
       }

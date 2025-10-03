@@ -27,10 +27,22 @@ import {
   Monitor,
 } from 'lucide-react'
 import { useTheme } from '../../contexts/theme-context'
+import { useUser } from '../../contexts/user-context'
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 
 export function Header() {
   const router = useRouter()
   const { setTheme, theme } = useTheme()
+  const { user } = useUser()
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2)
+  }
 
   const getThemeIcon = () => {
     switch (theme) {
@@ -93,20 +105,23 @@ export function Header() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center">
-                <User className="h-4 w-4" />
-              </div>
-              <span className="text-sm font-medium">John Doe</span>
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user?.profilePictureUrl || undefined} alt={user?.name || 'User'} />
+                <AvatarFallback className="text-xs">
+                  {user?.name ? getInitials(user.name) : 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium">{user?.name || 'User'}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/profile')}>
               <User className="mr-2 h-4 w-4" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>
               <Settings className="mr-2 h-4 w-4" />
               Settings
             </DropdownMenuItem>

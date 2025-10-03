@@ -1,18 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { AppLayout } from '../../components/layout/app-layout'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Badge } from '../../components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../components/ui/table'
 import {
   Card,
   CardContent,
@@ -29,11 +21,18 @@ import {
 } from '../../components/ui/select'
 import { useInfiniteBrands, useBrandStats } from '../../hooks/useBrands'
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll'
-import { BrandFilters } from '../../types'
+import { BrandFilters, Brand } from '../../types'
+import { BrandListPanel } from '../../components/brand/brand-list-panel'
+import { BrandDetailsPanel } from '../../components/brand/brand-details-panel'
 import { Search, Plus, Building2, DollarSign, TrendingUp, Loader2 } from 'lucide-react'
 
 export default function BrandsPage() {
   const [filters, setFilters] = useState<Omit<BrandFilters, 'page' | 'limit'>>({})
+  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null)
+  const [panelTopPosition, setPanelTopPosition] = useState<number>(0)
+  const detailsPanelRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const brandListRef = useRef<HTMLDivElement>(null)
 
   const {
     data,
@@ -82,7 +81,7 @@ export default function BrandsPage() {
     })
   }
 
-  const getStatusVariant = (status: string) => {
+  const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (status) {
       case 'ACTIVE':
         return 'default'
@@ -95,9 +94,73 @@ export default function BrandsPage() {
     }
   }
 
-  const getTypeVariant = (type: string) => {
+  const getTypeVariant = (type: string): 'default' | 'secondary' => {
     return type === 'AGENCY' ? 'secondary' : 'default'
   }
+
+  const handleBrandClick = (brandId: string) => {
+    // Calculate where to position the detail panel based on current scroll
+    if (containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect()
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const viewportHeight = window.innerHeight
+
+      // Position the panel to align with the current viewport center
+      const idealTop = scrollTop + (viewportHeight / 2) - containerRect.top - 200
+      setPanelTopPosition(Math.max(0, idealTop))
+    }
+
+    setSelectedBrandId(brandId)
+  }
+
+  // Handle click outside to close detail panel (but allow clicking other brand cards)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        selectedBrandId &&
+        detailsPanelRef.current &&
+        brandListRef.current &&
+        !detailsPanelRef.current.contains(event.target as Node) &&
+        !brandListRef.current.contains(event.target as Node)
+      ) {
+        setSelectedBrandId(null)
+      }
+    }
+
+    if (selectedBrandId) {
+      // Add a small delay to avoid closing immediately after opening
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside)
+      }, 100)
+
+      return () => {
+        clearTimeout(timeoutId)
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [selectedBrandId])
+
+  const formatCurrency = (amount?: number) => {
+    if (amount === undefined || amount === null) return 'N/A'
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A'
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  // Get selected brand from the brands array
+  const selectedBrand = brands.find(b => b.id === selectedBrandId) || (brands.length > 0 ? brands[0] : null)
 
   if (error) {
     return (
@@ -244,7 +307,7 @@ export default function BrandsPage() {
           </CardContent>
         </Card>
 
-        {/* Brands Table */}
+        {/* Brand Portfolio - Panel Layout */}
         <Card>
           <CardHeader>
             <CardTitle>Brand Portfolio</CardTitle>
@@ -253,78 +316,56 @@ export default function BrandsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Brand Name</TableHead>
-                    {/* <TableHead>Type</TableHead> */}
-                    <TableHead>Status</TableHead>
-                    <TableHead>Industry</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Currency</TableHead>
-                    <TableHead>Legal Name</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-6">
-                        Loading brands...
-                      </TableCell>
-                    </TableRow>
-                  ) : brands.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-6">
-                        No brands found matching your criteria
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    brands.map((brand) => (
-                      <TableRow key={brand.id}>
-                        <TableCell className="font-medium">
-                          <div>
-                            <div className="font-medium">{brand.name}</div>
-                            {brand.altName && (
-                              <div className="text-sm text-muted-foreground">
-                                {brand.altName}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        {/* <TableCell>
-                          <Badge variant={getTypeVariant(brand.type)}>
-                            {brand.type}
-                          </Badge>
-                        </TableCell> */}
-                        <TableCell>
-                          <Badge variant={getStatusVariant(brand.status)}>
-                            {brand.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {brand.industry || 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          {brand.owner?.name || 'Unassigned'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <DollarSign className="h-3 w-3 mr-1 text-muted-foreground" />
-                            {brand.currency}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm text-muted-foreground max-w-32 truncate">
-                            {brand.legalName || brand.name}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+            {isLoading ? (
+              <div className="text-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Loading brands...</p>
+              </div>
+            ) : brands.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Building2 className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p>No brands found matching your criteria</p>
+              </div>
+            ) : (
+              <div ref={containerRef} className="relative">
+                <div className={`transition-all duration-300 ${selectedBrandId ? 'lg:grid lg:grid-cols-3 gap-6' : ''}`}>
+                  <div ref={brandListRef}>
+                    <BrandListPanel
+                      brands={brands}
+                      selectedBrandId={selectedBrandId}
+                      onBrandClick={handleBrandClick}
+                      getStatusVariant={getStatusVariant}
+                      getTypeVariant={getTypeVariant}
+                    />
+                  </div>
+
+                  {selectedBrandId && (
+                    <div
+                      ref={detailsPanelRef}
+                      className="lg:col-span-2 animate-in slide-in-from-right duration-300"
+                      style={{
+                        position: selectedBrandId ? 'sticky' : 'static',
+                        top: '1rem',
+                        alignSelf: 'flex-start'
+                      }}
+                    >
+                      <BrandDetailsPanel
+                        brand={selectedBrand ? {
+                          ...selectedBrand,
+                          lastActivity: selectedBrand.updatedAt
+                        } : null}
+                        emptyMessage="Select a brand to view details"
+                        formatCurrency={formatCurrency}
+                        formatDate={formatDate}
+                        getStatusVariant={getStatusVariant}
+                        getTypeVariant={getTypeVariant}
+                        onClose={() => setSelectedBrandId(null)}
+                      />
+                    </div>
                   )}
-                </TableBody>
-              </Table>
-            </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

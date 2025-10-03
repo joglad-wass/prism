@@ -68,7 +68,7 @@ export function TalentQuickView({ talent, open, onOpenChange, onViewProfile }: T
   }
 
   const formatCurrency = (amount?: number) => {
-    if (!amount) return 'N/A'
+    if (amount === undefined || amount === null) return 'N/A'
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',

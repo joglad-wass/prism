@@ -11,6 +11,7 @@ import { TalentJourney } from '../../../components/talent/talent-journey'
 import { TalentContact } from '../../../components/talent/talent-contact'
 import { TalentDeals } from '../../../components/talent/talent-deals'
 import { TalentNotes } from '../../../components/talent/talent-notes'
+import { TalentBrands } from '../../../components/talent/talent-brands'
 import {
   ArrowLeft,
   ExternalLink,
@@ -339,6 +340,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
             <TabsTrigger value="journey">Journey</TabsTrigger>
             <TabsTrigger value="contact">Contact</TabsTrigger>
             <TabsTrigger value="deals">Deals</TabsTrigger>
+            <TabsTrigger value="brands">Associated Brands</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
           </TabsList>
 
@@ -356,6 +358,10 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
 
           <TabsContent value="deals">
             <TalentDeals talent={talent} />
+          </TabsContent>
+
+          <TabsContent value="brands">
+            <TalentBrands talent={talent} />
           </TabsContent>
 
           <TabsContent value="notes">

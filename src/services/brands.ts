@@ -17,19 +17,19 @@ export class BrandService {
     return response.data
   }
 
-  static async getBrand(id: string): Promise<Brand> {
+  static async getBrand(id: string): Promise<any> {
     const response = await api.get(`/brands/${id}`)
-    return response.data
+    return response.data.data
   }
 
   static async createBrand(brand: Partial<Brand>): Promise<Brand> {
     const response = await api.post('/brands', brand)
-    return response.data
+    return response.data.data
   }
 
   static async updateBrand(id: string, brand: Partial<Brand>): Promise<Brand> {
     const response = await api.put(`/brands/${id}`, brand)
-    return response.data
+    return response.data.data
   }
 
   static async deleteBrand(id: string): Promise<void> {
@@ -39,6 +39,6 @@ export class BrandService {
   // Get brand industries (for filtering)
   static async getIndustries(): Promise<string[]> {
     const response = await api.get('/brands/industries')
-    return response.data
+    return response.data.data
   }
 }

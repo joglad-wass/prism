@@ -319,6 +319,7 @@ export interface Product {
   ProductCode?: string
   Project_Deliverables__c?: string
   UnitPrice?: number
+  Description?: string
   Workday_Company__c?: string
   Workday_Project_State__c?: string
 
@@ -349,6 +350,7 @@ export interface Schedule {
   ScheduleStatus?: string
   ScheduleSplitPercent?: number
   Billable?: boolean
+  Active__c?: boolean
 
   // Invoice and Payment Fields
   Talent_Invoice_Line_Amount__c?: number
@@ -498,6 +500,20 @@ export interface SearchResult {
   title: string
   subtitle?: string
   category?: string
+  // Additional metadata for tooltips
+  sport?: string
+  team?: string
+  status?: string
+  agents?: Array<{ agent: { name: string }, isPrimary: boolean }>
+  industry?: string
+  email?: string
+  company?: string
+  division?: string
+  jobTitle?: string
+  brand?: { name: string }
+  owner?: { name: string }
+  stage?: string
+  amount?: string | number
 }
 
 // API Filter Types
@@ -508,6 +524,8 @@ export interface TalentFilters {
   isWomen?: boolean
   agent?: string
   search?: string
+  costCenter?: string
+  costCenterGroup?: string
   page?: number
   limit?: number
 }
@@ -529,6 +547,8 @@ export interface DealFilters {
   agent?: string
   division?: string
   search?: string
+  costCenter?: string
+  costCenterGroup?: string
   page?: number
   limit?: number
 }
@@ -557,6 +577,8 @@ export interface AgentFilters {
   division?: string
   search?: string
   hasDeals?: boolean
+  costCenter?: string
+  costCenterGroup?: string
   page?: number
   limit?: number
 }

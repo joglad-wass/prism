@@ -8,9 +8,16 @@ import {
   ExternalLink,
   Globe,
   MessageCircle,
+  Pencil,
+  Building2,
+  Package,
 } from 'lucide-react'
 import { TalentDetail } from '../../types/talent'
 import Image from 'next/image'
+import { useState } from 'react'
+import { AddressEditDialog } from './address-edit-dialog'
+import { PrimaryContactEditDialog } from './primary-contact-edit-dialog'
+import { SocialMediaEditDialog } from './social-media-edit-dialog'
 
 interface TalentContactProps {
   talent: TalentDetail
@@ -35,34 +42,60 @@ export function TalentContact({ talent }: TalentContactProps) {
     return talent.Website || contact?.website || null
   }
 
-  // Helper to format address from various sources
-  const getFormattedAddress = () => {
-    // Try mailing address first
-    if (talent.PersonMailingStreet || talent.PersonMailingCity) {
-      const parts = [
-        talent.PersonMailingStreet,
-        talent.PersonMailingCity,
-        talent.PersonMailingState || talent.PersonMailingStateCode,
-        talent.PersonMailingPostalCode,
-        talent.PersonMailingCountry
-      ].filter(Boolean)
-      return parts.join(', ')
-    }
-
-    // Try billing address
+  // Helper to format billing address
+  const getBillingAddress = () => {
     if (talent.BillingStreet || talent.BillingCity) {
-      const parts = [
-        talent.BillingStreet,
-        talent.BillingCity,
-        talent.BillingState || talent.BillingStateCode,
-        talent.BillingPostalCode,
-        talent.BillingCountry
-      ].filter(Boolean)
-      return parts.join(', ')
+      return {
+        street: talent.BillingStreet || '',
+        city: talent.BillingCity || '',
+        state: talent.BillingState || talent.BillingStateCode || '',
+        postalCode: talent.BillingPostalCode || '',
+        country: talent.BillingCountry || talent.BillingCountryCode || '',
+        formatted: [
+          talent.BillingStreet,
+          talent.BillingCity,
+          talent.BillingState || talent.BillingStateCode,
+          talent.BillingPostalCode,
+          talent.BillingCountry || talent.BillingCountryCode
+        ].filter(Boolean).join(', ')
+      }
+    }
+    return null
+  }
+
+  // Helper to format shipping address
+  const getShippingAddress = () => {
+    if (talent.ShippingStreet || talent.ShippingCity) {
+      return {
+        street: talent.ShippingStreet || '',
+        city: talent.ShippingCity || '',
+        state: talent.ShippingState || talent.ShippingStateCode || '',
+        postalCode: talent.ShippingPostalCode || '',
+        country: talent.ShippingCountry || talent.ShippingCountryCode || '',
+        formatted: [
+          talent.ShippingStreet,
+          talent.ShippingCity,
+          talent.ShippingState || talent.ShippingStateCode,
+          talent.ShippingPostalCode,
+          talent.ShippingCountry || talent.ShippingCountryCode
+        ].filter(Boolean).join(', ')
+      }
+    }
+    return null
+  }
+
+  // Helper to build social media URL - handles both full URLs and usernames
+  const buildSocialUrl = (value: string | undefined, baseUrl: string, prefix: string = '') => {
+    if (!value) return null
+
+    // If already a full URL, return as-is
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value
     }
 
-    // Fall back to contact address
-    return contact?.address || null
+    // Otherwise, build the URL
+    const cleanValue = value.replace('@', '')
+    return `${baseUrl}${prefix}${cleanValue}`
   }
 
   const getSocialPlatforms = () => {
@@ -71,49 +104,81 @@ export function TalentContact({ talent }: TalentContactProps) {
         name: 'Instagram',
         handle: talent.Instagram__c || contact?.instagram,
         iconSrc: '/instagram.png',
-        url: talent.Instagram__c || contact?.instagram ? `https://instagram.com/${(talent.Instagram__c || contact?.instagram || '').replace('@', '')}` : null,
+        url: buildSocialUrl(
+          talent.Instagram__c || contact?.instagram,
+          'https://instagram.com/',
+          ''
+        ),
       },
       {
         name: 'Twitter/X',
         handle: talent.X_Twitter__c || contact?.twitter,
         iconSrc: '/twitter.png',
-        url: talent.X_Twitter__c || contact?.twitter ? `https://twitter.com/${(talent.X_Twitter__c || contact?.twitter || '').replace('@', '')}` : null,
+        url: buildSocialUrl(
+          talent.X_Twitter__c || contact?.twitter,
+          'https://twitter.com/',
+          ''
+        ),
       },
       {
         name: 'Facebook',
         handle: talent.Facebook__c || contact?.facebook,
         iconSrc: '/facebook.png',
-        url: talent.Facebook__c || contact?.facebook ? `https://facebook.com/${talent.Facebook__c || contact?.facebook}` : null,
+        url: buildSocialUrl(
+          talent.Facebook__c || contact?.facebook,
+          'https://facebook.com/',
+          ''
+        ),
       },
       {
         name: 'YouTube',
         handle: talent.YouTube__c || contact?.youtube,
         iconSrc: '/youtube.png',
-        url: talent.YouTube__c || contact?.youtube ? `https://youtube.com/c/${talent.YouTube__c || contact?.youtube}` : null,
+        url: buildSocialUrl(
+          talent.YouTube__c || contact?.youtube,
+          'https://youtube.com/c/',
+          ''
+        ),
       },
       {
         name: 'TikTok',
         handle: contact?.tiktok,
         iconSrc: '/tiktok.png',
-        url: contact?.tiktok ? `https://tiktok.com/@${contact.tiktok.replace('@', '')}` : null,
+        url: buildSocialUrl(
+          contact?.tiktok,
+          'https://tiktok.com/',
+          '@'
+        ),
       },
       {
         name: 'Twitch',
         handle: contact?.twitch,
         iconSrc: '/twitch.png',
-        url: contact?.twitch ? `https://twitch.tv/${contact.twitch}` : null,
+        url: buildSocialUrl(
+          contact?.twitch,
+          'https://twitch.tv/',
+          ''
+        ),
       },
       {
         name: 'Spotify',
         handle: contact?.spotify,
         iconSrc: '/spotify.png',
-        url: contact?.spotify ? `https://open.spotify.com/artist/${contact.spotify}` : null,
+        url: buildSocialUrl(
+          contact?.spotify,
+          'https://open.spotify.com/artist/',
+          ''
+        ),
       },
       {
         name: 'SoundCloud',
         handle: contact?.soundcloud,
         iconSrc: '/soundcloud.png',
-        url: contact?.soundcloud ? `https://soundcloud.com/${contact.soundcloud}` : null,
+        url: buildSocialUrl(
+          contact?.soundcloud,
+          'https://soundcloud.com/',
+          ''
+        ),
       }
     ].filter(platform => platform.handle)
   }
@@ -122,51 +187,76 @@ export function TalentContact({ talent }: TalentContactProps) {
   const primaryEmail = getPrimaryEmail()
   const primaryPhone = getPrimaryPhone()
   const website = getWebsite()
-  const formattedAddress = getFormattedAddress()
+  const billingAddress = getBillingAddress()
+  const shippingAddress = getShippingAddress()
+
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editAddressType, setEditAddressType] = useState<'billing' | 'shipping'>('billing')
+  const [editContactDialogOpen, setEditContactDialogOpen] = useState(false)
+  const [editSocialMediaDialogOpen, setEditSocialMediaDialogOpen] = useState(false)
+
+  const handleEditAddress = (type: 'billing' | 'shipping') => {
+    setEditAddressType(type)
+    setEditDialogOpen(true)
+  }
 
   return (
     <div className="space-y-6">
       {/* Primary Contact Information */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            Primary Contact Information
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Primary Contact Information
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditContactDialogOpen(true)}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {primaryEmail && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Email</p>
-                  <p className="text-sm text-muted-foreground">{primaryEmail}</p>
-                </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="font-medium">Email</p>
+                <p className="text-sm text-muted-foreground">
+                  {primaryEmail || '—'}
+                </p>
               </div>
+            </div>
+            {primaryEmail && (
               <Button variant="outline" size="sm" asChild>
                 <a href={`mailto:${primaryEmail}`}>
                   <Mail className="mr-2 h-4 w-4" />
                   Send Email
                 </a>
               </Button>
-            </div>
-          )}
+            )}
+          </div>
 
-          {primaryPhone && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <MessageCircle className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Phone</p>
-                  <p className="text-sm text-muted-foreground">{primaryPhone}</p>
-                </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <MessageCircle className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="font-medium">Phone</p>
+                <p className="text-sm text-muted-foreground">
+                  {primaryPhone || '—'}
+                </p>
               </div>
+            </div>
+            {primaryPhone && (
               <Button variant="outline" size="sm" asChild>
                 <a href={`tel:${primaryPhone}`}>Call</a>
               </Button>
-            </div>
-          )}
+            )}
+          </div>
 
           {website && (
             <div className="flex items-center justify-between">
@@ -184,23 +274,113 @@ export function TalentContact({ talent }: TalentContactProps) {
               </Button>
             </div>
           )}
+        </CardContent>
+      </Card>
 
-          {formattedAddress && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Address</p>
-                  <p className="text-sm text-muted-foreground">{formattedAddress}</p>
-                </div>
+      {/* Billing Address */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Billing Address
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleEditAddress('billing')}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {billingAddress ? (
+            <div className="flex items-start gap-3">
+              <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
+              <div className="space-y-1">
+                {billingAddress.street && (
+                  <p className="text-sm">{billingAddress.street}</p>
+                )}
+                <p className="text-sm">
+                  {[
+                    billingAddress.city,
+                    billingAddress.state,
+                    billingAddress.postalCode
+                  ].filter(Boolean).join(', ')}
+                </p>
+                {billingAddress.country && (
+                  <p className="text-sm">{billingAddress.country}</p>
+                )}
               </div>
             </div>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground mb-4">No billing address available</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleEditAddress('billing')}
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Add Billing Address
+              </Button>
+            </div>
           )}
+        </CardContent>
+      </Card>
 
-          {(!primaryEmail && !primaryPhone && !website && !formattedAddress) && (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No contact information available
-            </p>
+      {/* Shipping Address */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Shipping Address
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleEditAddress('shipping')}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {shippingAddress ? (
+            <div className="flex items-start gap-3">
+              <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
+              <div className="space-y-1">
+                {shippingAddress.street && (
+                  <p className="text-sm">{shippingAddress.street}</p>
+                )}
+                <p className="text-sm">
+                  {[
+                    shippingAddress.city,
+                    shippingAddress.state,
+                    shippingAddress.postalCode
+                  ].filter(Boolean).join(', ')}
+                </p>
+                {shippingAddress.country && (
+                  <p className="text-sm">{shippingAddress.country}</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground mb-4">No shipping address available</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleEditAddress('shipping')}
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Add Shipping Address
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -208,10 +388,20 @@ export function TalentContact({ talent }: TalentContactProps) {
       {/* Social Media Platforms */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5" />
-            Social Media & Platforms
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Social Media & Platforms
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditSocialMediaDialogOpen(true)}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {socialPlatforms.length > 0 ? (
@@ -233,8 +423,6 @@ export function TalentContact({ talent }: TalentContactProps) {
                           // style={{ imageRendering: '-webkit-optimize-contrast' }}
                           unoptimized
                         />
-                      ) : platform.icon ? (
-                        <platform.icon className={`h-5 w-5 ${platform.color}`} />
                       ) : null}
                       <div>
                         <p className="font-medium">{platform.name}</p>
@@ -260,7 +448,7 @@ export function TalentContact({ talent }: TalentContactProps) {
         </CardContent>
       </Card>
 
-      {/* Contact Actions */}
+      {/* Contact Actions
       <Card>
         <CardHeader>
           <CardTitle>Contact Actions</CardTitle>
@@ -284,7 +472,29 @@ export function TalentContact({ talent }: TalentContactProps) {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
+
+      {/* Primary Contact Edit Dialog */}
+      <PrimaryContactEditDialog
+        open={editContactDialogOpen}
+        onOpenChange={setEditContactDialogOpen}
+        talent={talent}
+      />
+
+      {/* Social Media Edit Dialog */}
+      <SocialMediaEditDialog
+        open={editSocialMediaDialogOpen}
+        onOpenChange={setEditSocialMediaDialogOpen}
+        talent={talent}
+      />
+
+      {/* Address Edit Dialog */}
+      <AddressEditDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        talent={talent}
+        addressType={editAddressType}
+      />
     </div>
   )
 }

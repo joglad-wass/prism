@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ScheduleService } from '../services/schedules'
+import { ScheduleService, ScheduleAgentSplit } from '../services/schedules'
 import { Schedule, ScheduleFilters } from '../types'
 
 // Query Keys
@@ -80,6 +80,22 @@ export function useDeleteSchedule() {
   return useMutation({
     mutationFn: (id: string) => ScheduleService.deleteSchedule(id),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.lists() })
+    },
+  })
+}
+
+// ===== Schedule Agent Split Hooks =====
+
+export function useBatchUpdateScheduleSplits() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ scheduleId, splits }: { scheduleId: string; splits: Omit<ScheduleAgentSplit, 'id' | 'scheduleId' | 'createdAt' | 'updatedAt'>[] }) =>
+      ScheduleService.batchUpdateScheduleSplits(scheduleId, splits),
+    onSuccess: (_, variables) => {
+      // Invalidate the schedule detail to refetch with new splits
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.detail(variables.scheduleId) })
       queryClient.invalidateQueries({ queryKey: scheduleKeys.lists() })
     },
   })

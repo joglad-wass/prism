@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Input } from '../ui/input'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
@@ -11,7 +11,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { useGlobalSearch } from '../../hooks/useSearch'
+import { useFilter } from '../../contexts/filter-context'
 import { SearchResult } from '../../types'
 import { Search, Users, Building2, UserCheck, Briefcase, Loader2 } from 'lucide-react'
 
@@ -24,6 +26,17 @@ export function GlobalSearch({ trigger, onResultSelect }: GlobalSearchProps) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [debouncedQuery, setDebouncedQuery] = useState('')
+  const { filterSelection } = useFilter()
+
+  // Build filter object based on filter selection
+  const searchFilters = useMemo(() => {
+    if (filterSelection.type === 'group') {
+      return { costCenterGroup: filterSelection.value, costCenter: null }
+    } else if (filterSelection.type === 'individual') {
+      return { costCenter: filterSelection.value, costCenterGroup: null }
+    }
+    return { costCenter: null, costCenterGroup: null }
+  }, [filterSelection])
 
   // Debounce search query
   useEffect(() => {
@@ -34,7 +47,7 @@ export function GlobalSearch({ trigger, onResultSelect }: GlobalSearchProps) {
     return () => clearTimeout(timer)
   }, [query])
 
-  const { data: results, isLoading } = useGlobalSearch(debouncedQuery, isOpen && debouncedQuery.length >= 2)
+  const { data: results, isLoading } = useGlobalSearch(debouncedQuery, searchFilters, isOpen && debouncedQuery.length >= 2)
 
   const getTypeIcon = (type: SearchResult['type']) => {
     switch (type) {
@@ -72,6 +85,135 @@ export function GlobalSearch({ trigger, onResultSelect }: GlobalSearchProps) {
     onResultSelect?.(result)
   }
 
+  const formatAmount = (amount?: string | number) => {
+    if (!amount) return null
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(num)
+  }
+
+  const getTooltipContent = (result: SearchResult) => {
+    switch (result.type) {
+      case 'talent':
+        const primaryAgent = result.agents?.find(a => a.isPrimary)?.agent?.name
+        return (
+          <div className="space-y-2">
+            <div className="font-semibold">{result.title}</div>
+            {result.status && (
+              <div className="text-xs">
+                <span className="font-medium">Status:</span> {result.status}
+              </div>
+            )}
+            {(result.sport || result.team) && (
+              <div className="text-xs">
+                {result.sport && <span className="font-medium">Sport:</span>} {result.sport}
+                {result.sport && result.team && ' • '}
+                {result.team && <span className="font-medium">Team:</span>} {result.team}
+              </div>
+            )}
+            {primaryAgent && (
+              <div className="text-xs">
+                <span className="font-medium">Agent:</span> {primaryAgent}
+              </div>
+            )}
+          </div>
+        )
+
+      case 'brand':
+        return (
+          <div className="space-y-2">
+            <div className="font-semibold">{result.title}</div>
+            {result.category && (
+              <div className="text-xs">
+                <span className="font-medium">Type:</span> {result.category}
+              </div>
+            )}
+            {result.industry && (
+              <div className="text-xs">
+                <span className="font-medium">Industry:</span> {result.industry}
+              </div>
+            )}
+            {result.status && (
+              <div className="text-xs">
+                <span className="font-medium">Status:</span> {result.status}
+              </div>
+            )}
+            {result.owner?.name && (
+              <div className="text-xs">
+                <span className="font-medium">Owner:</span> {result.owner.name}
+              </div>
+            )}
+          </div>
+        )
+
+      case 'agent':
+        return (
+          <div className="space-y-2">
+            <div className="font-semibold">{result.title}</div>
+            {result.email && (
+              <div className="text-xs">
+                <span className="font-medium">Email:</span> {result.email}
+              </div>
+            )}
+            {result.company && (
+              <div className="text-xs">
+                <span className="font-medium">Company:</span> {result.company}
+              </div>
+            )}
+            {result.division && (
+              <div className="text-xs">
+                <span className="font-medium">Division:</span> {result.division}
+              </div>
+            )}
+            {result.jobTitle && (
+              <div className="text-xs">
+                <span className="font-medium">Title:</span> {result.jobTitle}
+              </div>
+            )}
+          </div>
+        )
+
+      case 'deal':
+        return (
+          <div className="space-y-2">
+            <div className="font-semibold">{result.title}</div>
+            {result.brand?.name && (
+              <div className="text-xs">
+                <span className="font-medium">Brand:</span> {result.brand.name}
+              </div>
+            )}
+            {result.stage && (
+              <div className="text-xs">
+                <span className="font-medium">Stage:</span> {result.stage}
+              </div>
+            )}
+            {result.status && (
+              <div className="text-xs">
+                <span className="font-medium">Status:</span> {result.status}
+              </div>
+            )}
+            {result.amount && (
+              <div className="text-sm font-semibold">
+                {formatAmount(result.amount)}
+              </div>
+            )}
+            {result.owner?.name && (
+              <div className="text-xs">
+                <span className="font-medium">Owner:</span> {result.owner.name}
+              </div>
+            )}
+          </div>
+        )
+
+      default:
+        return null
+    }
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -82,13 +224,15 @@ export function GlobalSearch({ trigger, onResultSelect }: GlobalSearchProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Global Search</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+        <div className="p-6 pb-0">
+          <DialogHeader>
+            <DialogTitle>Global Search</DialogTitle>
+          </DialogHeader>
+        </div>
+        <div className="flex flex-col gap-4 px-6 pb-6 flex-1 min-h-0">
           {/* Search Input */}
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search talents, brands, agents, deals..."
@@ -100,7 +244,7 @@ export function GlobalSearch({ trigger, onResultSelect }: GlobalSearchProps) {
           </div>
 
           {/* Results */}
-          <div className="min-h-[200px] max-h-[400px] overflow-auto">
+          <div className="flex-1 min-h-[200px] overflow-y-auto overflow-x-hidden">
             {query.length < 2 ? (
               <div className="flex items-center justify-center h-32 text-muted-foreground">
                 <div className="text-center">
@@ -123,43 +267,51 @@ export function GlobalSearch({ trigger, onResultSelect }: GlobalSearchProps) {
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                {Array.isArray(results) && results.map((result) => (
-                  <div
-                    key={`${result.type}-${result.id}`}
-                    onClick={() => handleResultClick(result)}
-                    className="flex items-center space-x-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
-                  >
-                    <div className={`p-2 rounded-md ${getTypeColor(result.type)}`}>
-                      {getTypeIcon(result.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2">
-                        <p className="font-medium truncate">{result.title}</p>
-                        <Badge variant="outline" className="capitalize">
-                          {result.type}
-                        </Badge>
-                      </div>
-                      {result.subtitle && (
-                        <p className="text-sm text-muted-foreground truncate">
-                          {result.subtitle}
-                        </p>
-                      )}
-                      {result.category && (
-                        <Badge variant="secondary" className="mt-1 text-xs">
-                          {result.category}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <TooltipProvider delayDuration={300}>
+                <div className="space-y-2 pr-2">
+                  {Array.isArray(results) && results.map((result) => (
+                    <Tooltip key={`${result.type}-${result.id}`}>
+                      <TooltipTrigger asChild>
+                        <div
+                          onClick={() => handleResultClick(result)}
+                          className="flex items-center space-x-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                        >
+                          <div className={`p-2 rounded-md flex-shrink-0 ${getTypeColor(result.type)}`}>
+                            {getTypeIcon(result.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 flex-wrap">
+                              <p className="font-medium truncate">{result.title}</p>
+                              <Badge variant="outline" className="capitalize flex-shrink-0">
+                                {result.type}
+                              </Badge>
+                            </div>
+                            {result.subtitle && (
+                              <p className="text-sm text-muted-foreground truncate">
+                                {result.subtitle}
+                              </p>
+                            )}
+                            {result.category && (
+                              <Badge variant="secondary" className="mt-1 text-xs">
+                                {result.category}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        {getTooltipContent(result)}
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
+              </TooltipProvider>
             )}
           </div>
 
           {/* Search Tips */}
           {query.length === 0 && (
-            <div className="border-t pt-4">
+            <div className="border-t pt-4 flex-shrink-0">
               <h4 className="font-medium mb-2">Search Tips:</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Search by name, email, or category</li>

@@ -1,18 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { AppLayout } from '../../components/layout/app-layout'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Badge } from '../../components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../components/ui/table'
 import {
   Card,
   CardContent,
@@ -29,15 +21,34 @@ import {
 } from '../../components/ui/select'
 import { useAgents } from '../../hooks/useAgents'
 import { AgentFilters } from '../../types'
-import { Search, Plus, UserCheck, Users, Mail, Phone, Award } from 'lucide-react'
+import { useFilter } from '../../contexts/filter-context'
+import { AgentListPanel } from '../../components/agent/agent-list-panel'
+import { AgentDetailsPanel } from '../../components/agent/agent-details-panel'
+import { Search, Plus, UserCheck, Users, Award, Loader2 } from 'lucide-react'
 
 export default function AgentsPage() {
+  const { filterSelection } = useFilter()
   const [filters, setFilters] = useState<AgentFilters>({
     limit: 50,
     page: 1,
   })
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+  const [panelTopPosition, setPanelTopPosition] = useState<number>(0)
+  const detailsPanelRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const agentListRef = useRef<HTMLDivElement>(null)
 
   const { data: agentsResponse, isLoading, error } = useAgents(filters)
+
+  // Update filters when filter selection changes
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      costCenter: filterSelection.type === 'individual' ? filterSelection.value || undefined : undefined,
+      costCenterGroup: filterSelection.type === 'group' ? filterSelection.value || undefined : undefined,
+      page: 1
+    }))
+  }, [filterSelection])
 
   const handleSearchChange = (value: string) => {
     setFilters({ ...filters, search: value || undefined, page: 1 })
@@ -62,6 +73,51 @@ export default function AgentsPage() {
   // Get unique companies and divisions for filters
   const companies = [...new Set(agentsResponse?.data.map(agent => agent.company).filter(Boolean))] || []
   const divisions = [...new Set(agentsResponse?.data.map(agent => agent.division).filter(Boolean))] || []
+
+  const handleAgentClick = (agentId: string) => {
+    // Calculate where to position the detail panel based on current scroll
+    if (containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect()
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const viewportHeight = window.innerHeight
+
+      // Position the panel to align with the current viewport center
+      const idealTop = scrollTop + (viewportHeight / 2) - containerRect.top - 200
+      setPanelTopPosition(Math.max(0, idealTop))
+    }
+
+    setSelectedAgentId(agentId)
+  }
+
+  // Handle click outside to close detail panel (but allow clicking other agent cards)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        selectedAgentId &&
+        detailsPanelRef.current &&
+        agentListRef.current &&
+        !detailsPanelRef.current.contains(event.target as Node) &&
+        !agentListRef.current.contains(event.target as Node)
+      ) {
+        setSelectedAgentId(null)
+      }
+    }
+
+    if (selectedAgentId) {
+      // Add a small delay to avoid closing immediately after opening
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside)
+      }, 100)
+
+      return () => {
+        clearTimeout(timeoutId)
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [selectedAgentId])
+
+  // Get selected agent from the agents array
+  const selectedAgent = agentsResponse?.data.find(a => a.id === selectedAgentId) || null
 
   if (error) {
     return (
@@ -261,7 +317,7 @@ export default function AgentsPage() {
           </Card>
         )}
 
-        {/* Agents Table */}
+        {/* Agent Directory - Panel Layout */}
         <Card>
           <CardHeader>
             <CardTitle>Agent Directory</CardTitle>
@@ -270,86 +326,47 @@ export default function AgentsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Agent</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Division</TableHead>
-                    <TableHead>Clients</TableHead>
-                    <TableHead>Deals</TableHead>
-                    <TableHead>Brands Owned</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-6">
-                        Loading agents...
-                      </TableCell>
-                    </TableRow>
-                  ) : agentsResponse?.data.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-6">
-                        No agents found matching your criteria
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    agentsResponse?.data.map((agent) => (
-                      <TableRow key={agent.id}>
-                        <TableCell className="font-medium">
-                          <div>
-                            <div className="font-medium">{agent.name}</div>
-                            {agent.title && (
-                              <div className="text-sm text-muted-foreground">
-                                {agent.title}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm">
-                              <Mail className="h-3 w-3 mr-1 text-muted-foreground" />
-                              {agent.email}
-                            </div>
-                            {agent.phone && (
-                              <div className="flex items-center text-sm">
-                                <Phone className="h-3 w-3 mr-1 text-muted-foreground" />
-                                {agent.phone}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {agent.company || 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          {agent.division || 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {agent.clients?.length || 0}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {agent.deals?.length || 0}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {agent.ownedBrands?.length || 0}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))
+            {isLoading ? (
+              <div className="text-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Loading agents...</p>
+              </div>
+            ) : agentsResponse?.data.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <UserCheck className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p>No agents found matching your criteria</p>
+              </div>
+            ) : (
+              <div ref={containerRef} className="relative">
+                <div className={`transition-all duration-300 ${selectedAgentId ? 'lg:grid lg:grid-cols-3 gap-6' : ''}`}>
+                  <div ref={agentListRef}>
+                    <AgentListPanel
+                      agents={agentsResponse?.data || []}
+                      selectedAgentId={selectedAgentId}
+                      onAgentClick={handleAgentClick}
+                    />
+                  </div>
+
+                  {selectedAgentId && (
+                    <div
+                      ref={detailsPanelRef}
+                      className="lg:col-span-2 animate-in slide-in-from-right duration-300"
+                      style={{
+                        position: selectedAgentId ? 'sticky' : 'static',
+                        top: '1rem',
+                        alignSelf: 'flex-start'
+                      }}
+                    >
+                      <AgentDetailsPanel
+                        agent={selectedAgent}
+                        emptyMessage="Select an agent to view details"
+                        onClose={() => setSelectedAgentId(null)}
+                      />
+                    </div>
                   )}
-                </TableBody>
-              </Table>
-            </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

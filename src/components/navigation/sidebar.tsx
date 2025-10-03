@@ -8,6 +8,7 @@ import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
 import { GlobalSearch } from '../search/global-search'
 import { useTheme } from '../../contexts/theme-context'
+import { CostCenterSelector } from './cost-center-selector'
 import {
   Users,
   Building2,
@@ -80,6 +81,9 @@ export function Sidebar() {
           <span className="ml-3 font-semibold text-lg text-sidebar-foreground">Wasserman Prism</span>
         </div>
       </div>
+
+      {/* Cost Center Selector */}
+      <CostCenterSelector />
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">

@@ -11,6 +11,8 @@ export class TalentService {
     if (filters.isWomen !== undefined) params.append('isWomen', filters.isWomen.toString())
     if (filters.agent) params.append('agent', filters.agent)
     if (filters.search) params.append('search', filters.search)
+    if (filters.costCenter) params.append('costCenter', filters.costCenter)
+    if (filters.costCenterGroup) params.append('costCenterGroup', filters.costCenterGroup)
     if (filters.page) params.append('page', filters.page.toString())
     if (filters.limit) params.append('limit', filters.limit.toString())
 

@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ReactQueryProvider } from "../lib/react-query";
 import { ThemeProvider } from "../contexts/theme-context";
+import { FilterProvider } from "../contexts/filter-context";
+import { UserProvider } from "../contexts/user-context";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,9 +56,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider defaultTheme="system" storageKey="prism-ui-theme">
-          <ReactQueryProvider>
-            {children}
-          </ReactQueryProvider>
+          <UserProvider>
+            <FilterProvider storageKey="prism-cost-center-filter">
+              <ReactQueryProvider>
+                {children}
+                <Toaster richColors position="top-right" />
+              </ReactQueryProvider>
+            </FilterProvider>
+          </UserProvider>
         </ThemeProvider>
       </body>
     </html>

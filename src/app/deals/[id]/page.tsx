@@ -497,7 +497,7 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
             <TabsTrigger value="overview">Activity</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="schedules">Schedules</TabsTrigger>
+            {/* <TabsTrigger value="schedules">Schedules</TabsTrigger> */}
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
           </TabsList>

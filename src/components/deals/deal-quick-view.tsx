@@ -45,6 +45,7 @@ export interface DealQuickViewData {
   products?: Array<any>
   _count?: {
     schedules: number
+    products?: number
   }
 }
 
@@ -126,7 +127,7 @@ export function DealQuickView({ deal, open, onOpenChange, onViewDetails }: DealQ
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Deal Amount</span>
               </div>
-              <span className="text-sm font-semibold">{formatCurrency(deal.Amount)}</span>
+              <span className="text-sm font-semibold">{formatCurrency(deal.amount)}</span>
             </div>
 
             <div className="flex items-center justify-between">
@@ -206,7 +207,7 @@ export function DealQuickView({ deal, open, onOpenChange, onViewDetails }: DealQ
                 <Package className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Products</span>
               </div>
-              <span className="text-sm font-semibold">{deal.products?.length || 0}</span>
+              <span className="text-sm font-semibold">{deal._count?.products || deal.products?.length || 0}</span>
             </div>
 
             <div className="flex items-center justify-between">
@@ -222,7 +223,7 @@ export function DealQuickView({ deal, open, onOpenChange, onViewDetails }: DealQ
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Close Date</span>
               </div>
-              <span className="text-sm text-muted-foreground">{formatDate(deal.CloseDate)}</span>
+              <span className="text-sm text-muted-foreground">{formatDate(deal.closeDate)}</span>
             </div>
           </div>
 

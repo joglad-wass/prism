@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AgentService } from '../services/agents'
 import { Agent, AgentFilters } from '../types'
+import { useState, useEffect } from 'react'
 
 // Query Keys
 export const agentKeys = {
@@ -16,6 +17,36 @@ export function useAgents(filters: AgentFilters = {}) {
   return useQuery({
     queryKey: agentKeys.list(filters),
     queryFn: () => AgentService.getAgents(filters),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+}
+
+// Agent search hook with debouncing
+export function useAgentSearch(searchTerm: string, costCenter?: string, costCenterGroup?: string, limit: number = 10) {
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  return useQuery({
+    queryKey: agentKeys.list({
+      search: debouncedSearch || undefined,
+      costCenter,
+      costCenterGroup,
+      limit
+    }),
+    queryFn: () => AgentService.getAgents({
+      search: debouncedSearch || undefined,
+      costCenter,
+      costCenterGroup,
+      limit
+    }),
+    enabled: true, // Always enabled to show initial results
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }

@@ -1,18 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { AppLayout } from '../../components/layout/app-layout'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Badge } from '../../components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../components/ui/table'
 import {
   Card,
   CardContent,
@@ -29,29 +21,80 @@ import {
 } from '../../components/ui/select'
 import { useDeals } from '../../hooks/useDeals'
 import { DealFilters } from '../../types'
-import { Search, Plus, Briefcase, DollarSign, TrendingUp, Calendar, Target } from 'lucide-react'
-import { DealQuickView, type DealQuickViewData } from '../../components/deals/deal-quick-view'
-import { useRouter } from 'next/navigation'
+import { useFilter } from '../../contexts/filter-context'
+import { DealListPanel } from '../../components/deals/deal-list-panel'
+import { DealDetailsPanel } from '../../components/deals/deal-details-panel'
+import { Search, Plus, Briefcase, DollarSign, TrendingUp, Calendar, Target, Loader2 } from 'lucide-react'
 
 export default function DealsPage() {
-  const router = useRouter()
+  const { filterSelection } = useFilter()
   const [filters, setFilters] = useState<DealFilters>({
     limit: 50,
     page: 1,
   })
-  const [selectedDeal, setSelectedDeal] = useState<DealQuickViewData | null>(null)
-  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false)
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(null)
+  const [panelTopPosition, setPanelTopPosition] = useState<number>(0)
+  const detailsPanelRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const dealListRef = useRef<HTMLDivElement>(null)
 
   const { data: dealsResponse, isLoading, error } = useDeals(filters)
+
+  // Update filters when filter selection changes
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      costCenter: filterSelection.type === 'individual' ? filterSelection.value || undefined : undefined,
+      costCenterGroup: filterSelection.type === 'group' ? filterSelection.value || undefined : undefined,
+      page: 1
+    }))
+  }, [filterSelection])
 
   const handleSearchChange = (value: string) => {
     setFilters({ ...filters, search: value || undefined, page: 1 })
   }
 
-  const handleDealClick = (deal: any) => {
-    setSelectedDeal(deal)
-    setIsQuickViewOpen(true)
+  const handleDealClick = (dealId: string) => {
+    // Calculate where to position the detail panel based on current scroll
+    if (containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect()
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const viewportHeight = window.innerHeight
+
+      // Position the panel to align with the current viewport center
+      const idealTop = scrollTop + (viewportHeight / 2) - containerRect.top - 200
+      setPanelTopPosition(Math.max(0, idealTop))
+    }
+
+    setSelectedDealId(dealId)
   }
+
+  // Handle click outside to close detail panel (but allow clicking other deal cards)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        selectedDealId &&
+        detailsPanelRef.current &&
+        dealListRef.current &&
+        !detailsPanelRef.current.contains(event.target as Node) &&
+        !dealListRef.current.contains(event.target as Node)
+      ) {
+        setSelectedDealId(null)
+      }
+    }
+
+    if (selectedDealId) {
+      // Add a small delay to avoid closing immediately after opening
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside)
+      }, 100)
+
+      return () => {
+        clearTimeout(timeoutId)
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [selectedDealId])
 
   const handleStageChange = (value: string) => {
     setFilters({
@@ -117,6 +160,9 @@ export default function DealsPage() {
     return acc
   }, { total: 0, count: 0, won: 0, negotiating: 0, proposal: 0 }) ||
   { total: 0, count: 0, won: 0, negotiating: 0, proposal: 0 }
+
+  // Get selected deal from the deals array
+  const selectedDeal = dealsResponse?.data.find(d => d.id === selectedDealId) || null
 
   if (error) {
     return (
@@ -285,7 +331,7 @@ export default function DealsPage() {
           </CardContent>
         </Card>
 
-        {/* Deals Table */}
+        {/* Deal Pipeline - Panel Layout */}
         <Card>
           <CardHeader>
             <CardTitle>Deal Pipeline</CardTitle>
@@ -294,114 +340,53 @@ export default function DealsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Deal Name</TableHead>
-                    <TableHead>Brand</TableHead>
-                    {/* <TableHead>Status</TableHead> */}
-                    <TableHead>Stage</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Contract Amount</TableHead>
-                    {/* <TableHead>Products</TableHead> */}
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Close Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-6">
-                        Loading deals...
-                      </TableCell>
-                    </TableRow>
-                  ) : dealsResponse?.data.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-6">
-                        No deals found matching your criteria
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    dealsResponse?.data.map((deal) => (
-                      <TableRow
-                        key={deal.id}
-                        className="cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => handleDealClick(deal)}
-                      >
-                        <TableCell className="font-medium">
-                          <div>
-                            <div className="font-medium">{deal.Name}</div>
-                            {deal.division && (
-                              <div className="text-sm text-muted-foreground">
-                                {deal.division}
-                              </div>
-                            )}
-                            {deal.Account_Industry__c && (
-                              <div className="text-xs text-muted-foreground">
-                                {deal.Account_Industry__c}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div>{deal.brand?.name || deal.Account_Name__c || 'Unknown Brand'}</div>
-                            {deal.Owner_Workday_Cost_Center__c && (
-                              <div className="text-xs text-muted-foreground">
-                                {deal.Owner_Workday_Cost_Center__c}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        {/* <TableCell>
-                          <Badge variant={getStatusVariant(deal.Status__c)}>
-                            {deal.Status__c}
-                          </Badge>
-                        </TableCell> */}
-                        <TableCell>
-                          <Badge variant={getStageVariant(deal.StageName)}>
-                            {deal.StageName}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {formatCurrency(deal.Amount)}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {formatCurrency(deal.Contract_Amount__c)}
-                          {deal.Talent_Marketing_Fee_Percentage__c && (
-                            <div className="text-xs text-muted-foreground">
-                              {deal.Talent_Marketing_Fee_Percentage__c}% fee
-                            </div>
-                          )}
-                        </TableCell>
-                        {/* <TableCell>
-                          <div className="text-sm">
-                            {deal.products?.length || 0} products
-                            <div className="text-xs text-muted-foreground">
-                              {deal._count?.schedules || 0} schedules
-                            </div>
-                          </div>
-                        </TableCell> */}
-                        <TableCell>
-                          <div>
-                            <div>{deal.owner?.name || deal.Licence_Holder_Name__c || 'Unassigned'}</div>
-                            {deal.owner?.email && (
-                              <div className="text-xs text-muted-foreground">
-                                {deal.owner.email}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {formatDate(deal.closeDate)}
-                        </TableCell>
-                      </TableRow>
-                    ))
+            {isLoading ? (
+              <div className="text-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Loading deals...</p>
+              </div>
+            ) : dealsResponse?.data.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p>No deals found matching your criteria</p>
+              </div>
+            ) : (
+              <div ref={containerRef} className="relative">
+                <div className={`transition-all duration-300 ${selectedDealId ? 'lg:grid lg:grid-cols-3 gap-6' : ''}`}>
+                  <div ref={dealListRef}>
+                    <DealListPanel
+                      deals={dealsResponse?.data || []}
+                      selectedDealId={selectedDealId}
+                      onDealClick={handleDealClick}
+                      getStageVariant={getStageVariant}
+                      formatCompactCurrency={formatCompactCurrency}
+                      formatDate={formatDate}
+                    />
+                  </div>
+
+                  {selectedDealId && (
+                    <div
+                      ref={detailsPanelRef}
+                      className="lg:col-span-2 animate-in slide-in-from-right duration-300"
+                      style={{
+                        position: selectedDealId ? 'sticky' : 'static',
+                        top: '1rem',
+                        alignSelf: 'flex-start'
+                      }}
+                    >
+                      <DealDetailsPanel
+                        deal={selectedDeal}
+                        emptyMessage="Select a deal to view details"
+                        formatCurrency={formatCurrency}
+                        formatDate={formatDate}
+                        getStageVariant={getStageVariant}
+                        onClose={() => setSelectedDealId(null)}
+                      />
+                    </div>
                   )}
-                </TableBody>
-              </Table>
-            </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -413,16 +398,6 @@ export default function DealsPage() {
             </span>
           </div>
         )}
-
-        {/* Deal Quick View Modal */}
-        <DealQuickView
-          deal={selectedDeal}
-          open={isQuickViewOpen}
-          onOpenChange={setIsQuickViewOpen}
-          onViewDetails={(dealId) => {
-            router.push(`/deals/${dealId}`)
-          }}
-        />
       </div>
     </AppLayout>
   )

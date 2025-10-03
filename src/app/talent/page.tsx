@@ -1,19 +1,10 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { AppLayout } from '../../components/layout/app-layout'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Badge } from '../../components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../components/ui/table'
 import {
   Card,
   CardContent,
@@ -31,15 +22,20 @@ import {
 import { useInfiniteTalents, useTalentStats } from '../../hooks/useTalents'
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll'
 import { TalentFilters } from '../../types'
-import { TalentQuickView, TalentQuickViewData } from '../../components/talent/talent-quick-view'
+import { TalentListPanel } from '../../components/talent/talent-list-panel'
+import { TalentDetailsPanel } from '../../components/talent/talent-details-panel'
+import { useFilter } from '../../contexts/filter-context'
 import { Search, Plus, Users, Loader2 } from 'lucide-react'
 
 export default function TalentsPage() {
-  const router = useRouter()
+  const { filterSelection } = useFilter()
   const [filters, setFilters] = useState<Omit<TalentFilters, 'page' | 'limit'>>({})
-  const [selectedTalent, setSelectedTalent] = useState<TalentQuickViewData | null>(null)
-  const [quickViewOpen, setQuickViewOpen] = useState(false)
+  const [selectedTalentId, setSelectedTalentId] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState('')
+  const [panelTopPosition, setPanelTopPosition] = useState<number>(0)
+  const detailsPanelRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const talentListRef = useRef<HTMLDivElement>(null)
 
   const {
     data,
@@ -56,8 +52,12 @@ export default function TalentsPage() {
     fetchNextPage,
   })
 
-  // Get overall stats (unfiltered) for analytics cards
-  const { data: overallStats } = useTalentStats()
+  // Get overall stats (respecting cost center filter only, not other filters)
+  const costCenterOnlyFilters = {
+    ...(filterSelection.type === 'individual' && { costCenter: filterSelection.value || undefined }),
+    ...(filterSelection.type === 'group' && { costCenterGroup: filterSelection.value || undefined })
+  }
+  const { data: overallStats } = useTalentStats(costCenterOnlyFilters)
 
   // Get filtered stats for display purposes
   const { data: filteredStats } = useTalentStats(filters)
@@ -73,6 +73,20 @@ export default function TalentsPage() {
   const handleSearchChange = useCallback((value: string) => {
     setSearchValue(value)
   }, [])
+
+  // Update filters when filter selection changes
+  useEffect(() => {
+    console.log('Talents page - filter selection changed:', filterSelection)
+    setFilters(prev => {
+      const newFilters = {
+        ...prev,
+        costCenter: filterSelection.type === 'individual' ? filterSelection.value || undefined : undefined,
+        costCenterGroup: filterSelection.type === 'group' ? filterSelection.value || undefined : undefined
+      }
+      console.log('Talents page - setting filters:', newFilters)
+      return newFilters
+    })
+  }, [filterSelection])
 
   // Debounce search to avoid excessive API calls
   useEffect(() => {
@@ -101,61 +115,54 @@ export default function TalentsPage() {
   }
 
 
-  interface Talent {
-    id: string
-    Name: string
-    agent?: { name: string }
-    agents?: {
-      isPrimary: boolean
-      agent: {
-        name: string
-      }
-    }[]
-    costCenter?: string
-    sport?: string
-    team?: string
-    category?: string
-    status: string
-    dealCount?: number
-    totalRevenue?: number
-    wassRevenue?: number
-    lastActivity?: string
-    lastDealDate?: string
-    location?: string
-    isNil?: boolean
-  }
+  const handleTalentClick = (talentId: string) => {
+    // Calculate where to position the detail panel based on current scroll
+    if (containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect()
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const viewportHeight = window.innerHeight
 
-  const handleTalentClick = (talent: Talent) => {
-    const quickViewData: TalentQuickViewData = {
-      id: talent.id,
-      name: talent.Name,
-      agents: talent.agents || null,
-      costCenter: talent.costCenter,
-      sport: talent.sport,
-      team: talent.team,
-      category: talent.category,
-      status: talent.status,
-      dealCount: talent.dealCount || 0,
-      totalRevenue: talent.totalRevenue,
-      wassRevenue: talent.wassRevenue,
-      lastActivity: talent.lastActivity || talent.lastDealDate,
-      location: talent.location,
-      isNil: talent.isNil,
+      // Position the panel to align with the current viewport center
+      const idealTop = scrollTop + (viewportHeight / 2) - containerRect.top - 200
+      setPanelTopPosition(Math.max(0, idealTop))
     }
-    setSelectedTalent(quickViewData)
-    setQuickViewOpen(true)
+
+    setSelectedTalentId(talentId)
   }
 
-  const handleViewProfile = (talentId: string) => {
-    router.push(`/talent/${talentId}`)
-  }
+  // Handle click outside to close detail panel (but allow clicking other talent cards)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        selectedTalentId &&
+        detailsPanelRef.current &&
+        talentListRef.current &&
+        !detailsPanelRef.current.contains(event.target as Node) &&
+        !talentListRef.current.contains(event.target as Node)
+      ) {
+        setSelectedTalentId(null)
+      }
+    }
+
+    if (selectedTalentId) {
+      // Add a small delay to avoid closing immediately after opening
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside)
+      }, 100)
+
+      return () => {
+        clearTimeout(timeoutId)
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [selectedTalentId])
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A'
     return new Date(dateString).toLocaleDateString()
   }
 
-  const getStatusVariant = (status: string) => {
+  const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
     // Make status badge colors more flexible
     const lowercaseStatus = status?.toLowerCase()
     if (lowercaseStatus?.includes('active') && !lowercaseStatus?.includes('inactive')) {
@@ -166,6 +173,19 @@ export default function TalentsPage() {
     }
     return 'secondary'
   }
+
+  const formatCurrency = (amount?: number) => {
+    if (!amount) return 'N/A'
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  // Get selected talent from the talents array
+  const selectedTalent = talents.find(t => t.id === selectedTalentId) || (talents.length > 0 ? talents[0] : null)
 
   if (error) {
     return (
@@ -314,7 +334,7 @@ export default function TalentsPage() {
           </CardContent>
         </Card>
 
-        {/* Talents Table */}
+        {/* Talent Roster - Panel Layout */}
         <Card>
           <CardHeader>
             <CardTitle>Talent Roster</CardTitle>
@@ -323,74 +343,58 @@ export default function TalentsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Status</TableHead> 
-                    <TableHead>Agent</TableHead>
-                    <TableHead>Last Deal</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-6">
-                        Loading talents...
-                      </TableCell>
-                    </TableRow>
-                  ) : talents.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-6">
-                        No talents found matching your criteria
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    talents.map((talent) => (
-                      <TableRow
-                        key={talent.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleTalentClick(talent)}
-                      >
-                        <TableCell className="font-medium">
-                          <div>
-                            <div className="font-medium">{talent.Name}</div>
-                            {/* {talent.location && (
-                              <div className="text-sm text-muted-foreground">
-                                {talent.location}
-                              </div>
-                            )} */}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            {talent.category && (
-                              <Badge variant="outline">{talent.category}</Badge>
-                            )}
-                            {talent.isNil && (
-                              <Badge variant="secondary">NIL</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusVariant(talent.status)}>
-                            {talent.status}
-                          </Badge>
-                        </TableCell> 
-                        <TableCell>
-                          {talent.agents?.find(ta => ta.isPrimary)?.agent?.name || talent.agents?.[0]?.agent?.name || 'No agent assigned'}
-                        </TableCell>
-                        <TableCell>
-                          {formatDate(talent.lastDealDate)}
-                        </TableCell>
-                      </TableRow>
-                    ))
+            {isLoading ? (
+              <div className="text-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Loading talents...</p>
+              </div>
+            ) : talents.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p>No talents found matching your criteria</p>
+              </div>
+            ) : (
+              <div ref={containerRef} className="relative">
+                <div className={`transition-all duration-300 ${selectedTalentId ? 'lg:grid lg:grid-cols-3 gap-6' : ''}`}>
+                  <div ref={talentListRef}>
+                    <TalentListPanel
+                      talents={talents.map(t => ({
+                        ...t,
+                        lastDealDate: t.lastDealDate || t.LastActivityDate
+                      }))}
+                      selectedTalentId={selectedTalentId}
+                      onTalentClick={handleTalentClick}
+                      formatDate={formatDate}
+                      getStatusVariant={getStatusVariant}
+                    />
+                  </div>
+
+                  {selectedTalentId && (
+                    <div
+                      ref={detailsPanelRef}
+                      className="lg:col-span-2 animate-in slide-in-from-right duration-300"
+                      style={{
+                        position: selectedTalentId ? 'sticky' : 'static',
+                        top: '1rem',
+                        alignSelf: 'flex-start'
+                      }}
+                    >
+                      <TalentDetailsPanel
+                        talent={selectedTalent ? {
+                          ...selectedTalent,
+                          lastActivity: selectedTalent.lastDealDate || selectedTalent.LastActivityDate
+                        } : null}
+                        emptyMessage="Select a talent to view details"
+                        formatCurrency={formatCurrency}
+                        formatDate={formatDate}
+                        getStatusVariant={getStatusVariant}
+                        onClose={() => setSelectedTalentId(null)}
+                      />
+                    </div>
                   )}
-                </TableBody>
-              </Table>
-            </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -415,16 +419,6 @@ export default function TalentsPage() {
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
             Showing all {talents.length} talents
           </div>
-        )}
-
-        {/* Quick View Dialog */}
-        {selectedTalent && (
-          <TalentQuickView
-            talent={selectedTalent}
-            open={quickViewOpen}
-            onOpenChange={setQuickViewOpen}
-            onViewProfile={handleViewProfile}
-          />
         )}
       </div>
     </AppLayout>

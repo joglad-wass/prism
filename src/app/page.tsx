@@ -9,28 +9,39 @@ import { useTalentStats } from '../hooks/useTalents'
 import { useBrandStats } from '../hooks/useBrands'
 import { useDeals } from '../hooks/useDeals'
 import { useAgents } from '../hooks/useAgents'
+import { useFilter } from '../contexts/filter-context'
 
 export default function Home() {
-  const { data: talentStats } = useTalentStats()
+  const { filterSelection } = useFilter()
+
+  const filterParams = {
+    ...(filterSelection.type === 'individual' && { costCenter: filterSelection.value || undefined }),
+    ...(filterSelection.type === 'group' && { costCenterGroup: filterSelection.value || undefined })
+  }
+
+  const { data: talentStats } = useTalentStats(filterParams)
   const { data: brandStats } = useBrandStats()
 
   // Fetch recent deals (limit to 3 for the card)
   const { data: recentDeals } = useDeals({
     limit: 3,
-    page: 1
+    page: 1,
+    ...filterParams
   })
 
   // Fetch all deals for stats (first page with higher limit)
   const { data: allDeals } = useDeals({
     limit: 100,
-    page: 1
+    page: 1,
+    ...filterParams
   })
 
   // Fetch top performing agents (only agents with deals)
   const { data: topAgents } = useAgents({
     hasDeals: true,
     limit: 10,
-    page: 1
+    page: 1,
+    ...filterParams
   })
 
   // Calculate deal stats
