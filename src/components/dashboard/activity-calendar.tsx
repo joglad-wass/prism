@@ -8,6 +8,7 @@ import { Input } from '../ui/input'
 import { Calendar as CalendarIcon, LayoutGrid, Maximize2, RotateCcw, X, Check, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { useCalendarEvents } from '../../hooks/useCalendar'
 import { useLabels } from '../../hooks/useLabels'
+import { useFilter } from '../../contexts/filter-context'
 import { CalendarEvent, CalendarEventType } from '../../types'
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, isSameDay, parseISO } from 'date-fns'
 import Link from 'next/link'
@@ -110,6 +111,7 @@ export function ActivityCalendar() {
 
   // Get labels for dynamic category names
   const { labels } = useLabels()
+  const { filterSelection } = useFilter()
 
   // Filter state
   const [selectedTalentIds, setSelectedTalentIds] = useState<Set<string>>(new Set())
@@ -153,10 +155,23 @@ export function ActivityCalendar() {
   const startDate = startOfMonth(currentMonth)
   const endDate = endOfMonth(currentMonth)
 
-  const { data: events, isLoading } = useCalendarEvents({
-    startDate: startDate.toISOString(),
-    endDate: endDate.toISOString(),
-  })
+  // Build calendar filters including cost center from global filter
+  const calendarFilters = useMemo(() => {
+    const filters: any = {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    }
+
+    if (filterSelection.type === 'individual' && filterSelection.value) {
+      filters.costCenter = filterSelection.value
+    } else if (filterSelection.type === 'group' && filterSelection.value) {
+      filters.costCenterGroup = filterSelection.value
+    }
+
+    return filters
+  }, [startDate, endDate, filterSelection])
+
+  const { data: events, isLoading } = useCalendarEvents(calendarFilters)
 
   // Get unique talents and brands from calendar events
   const { talents, brands } = useMemo(() => {

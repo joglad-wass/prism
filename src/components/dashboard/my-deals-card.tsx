@@ -5,11 +5,21 @@ import { Badge } from '../ui/badge'
 import { Briefcase, TrendingUp } from 'lucide-react'
 import { useAgentStats } from '../../hooks/useAgentStats'
 import { useLabels } from '../../hooks/useLabels'
+import { useUser } from '../../contexts/user-context'
 import Link from 'next/link'
 
-export function MyDealsCard() {
-  const { data: stats, isLoading } = useAgentStats()
+type MyDealsCardProps = {
+  filters?: { costCenter?: string; costCenterGroup?: string }
+}
+
+export function MyDealsCard({ filters }: MyDealsCardProps) {
+  const { data: stats, isLoading } = useAgentStats(filters)
   const { labels } = useLabels()
+  const { user } = useUser()
+
+  const isAdministrator = user?.userType === 'ADMINISTRATOR'
+
+  const cardTitle = isAdministrator ? labels.deals : `My ${labels.deals}`
 
   if (isLoading) {
     return (
@@ -17,9 +27,9 @@ export function MyDealsCard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Briefcase className="h-5 w-5" />
-            My {labels.deals}
+            {cardTitle}
           </CardTitle>
-          <CardDescription>Loading your {labels.deals.toLowerCase()}...</CardDescription>
+          <CardDescription>Loading {labels.deals.toLowerCase()}...</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4 animate-pulse">
@@ -42,7 +52,7 @@ export function MyDealsCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Briefcase className="h-5 w-5" />
-          My {labels.deals}
+          {cardTitle}
         </CardTitle>
         <CardDescription>
           {myDeals.active} active • {myDeals.total} total

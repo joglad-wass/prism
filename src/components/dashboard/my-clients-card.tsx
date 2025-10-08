@@ -4,10 +4,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Badge } from '../ui/badge'
 import { Users, TrendingUp } from 'lucide-react'
 import { useAgentStats } from '../../hooks/useAgentStats'
+import { useUser } from '../../contexts/user-context'
 import Link from 'next/link'
 
-export function MyClientsCard() {
-  const { data: stats, isLoading } = useAgentStats()
+type MyClientsCardProps = {
+  filters?: { costCenter?: string; costCenterGroup?: string }
+}
+
+export function MyClientsCard({ filters }: MyClientsCardProps) {
+  const { data: stats, isLoading } = useAgentStats(filters)
+  const { user } = useUser()
+
+  const isAdministrator = user?.userType === 'ADMINISTRATOR'
+  const cardTitle = isAdministrator ? 'Clients' : 'My Clients'
 
   if (isLoading) {
     return (
@@ -15,9 +24,9 @@ export function MyClientsCard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            My Clients
+            {cardTitle}
           </CardTitle>
-          <CardDescription>Loading your clients...</CardDescription>
+          <CardDescription>Loading clients...</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4 animate-pulse">
@@ -40,7 +49,7 @@ export function MyClientsCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5" />
-          My Clients
+          {cardTitle}
         </CardTitle>
         <CardDescription>
           {myClients.active} active • {myClients.total} total

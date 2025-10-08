@@ -4,10 +4,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Badge } from '../ui/badge'
 import { Building2, TrendingUp } from 'lucide-react'
 import { useAgentStats } from '../../hooks/useAgentStats'
+import { useUser } from '../../contexts/user-context'
 import Link from 'next/link'
 
-export function MyBrandsCard() {
-  const { data: stats, isLoading } = useAgentStats()
+type MyBrandsCardProps = {
+  filters?: { costCenter?: string; costCenterGroup?: string }
+}
+
+export function MyBrandsCard({ filters }: MyBrandsCardProps) {
+  const { data: stats, isLoading } = useAgentStats(filters)
+  const { user } = useUser()
+
+  const isAdministrator = user?.userType === 'ADMINISTRATOR'
+  const cardTitle = isAdministrator ? 'Brands' : 'My Brands'
 
   if (isLoading) {
     return (
@@ -15,9 +24,9 @@ export function MyBrandsCard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            My Brands
+            {cardTitle}
           </CardTitle>
-          <CardDescription>Loading your brands...</CardDescription>
+          <CardDescription>Loading brands...</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4 animate-pulse">
@@ -40,7 +49,7 @@ export function MyBrandsCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Building2 className="h-5 w-5" />
-          My Brands
+          {cardTitle}
         </CardTitle>
         <CardDescription>
           {myBrands.active} active • {myBrands.total} total

@@ -19,6 +19,12 @@ import {
   ArrowRightFromLine,
   ArrowLeftFromLine
 } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../ui/tooltip'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -117,12 +123,13 @@ export function Sidebar() {
   }
 
   return (
-    <div
-      className={cn(
-        "flex h-full flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 relative",
-        isCollapsed ? "w-16" : "w-64"
-      )}
-    >
+    <TooltipProvider delayDuration={300}>
+      <div
+        className={cn(
+          "flex h-full flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 relative",
+          isCollapsed ? "w-16" : "w-64"
+        )}
+      >
       {/* Toggle Button - Only show when expanded */}
       {!isCollapsed && (
         <button
@@ -186,7 +193,7 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navigation.map((item) => {
           const isActive = pathname === item.href
-          return (
+          const linkContent = (
             <Link
               key={item.name}
               href={item.href}
@@ -195,7 +202,6 @@ export function Sidebar() {
                 isActive && 'bg-sidebar-primary text-sidebar-primary-foreground',
                 isCollapsed && 'justify-center'
               )}
-              title={isCollapsed ? item.name : undefined}
             >
               <item.icon className={cn(
                 "h-5 w-5 flex-shrink-0",
@@ -204,19 +210,41 @@ export function Sidebar() {
               {!isCollapsed && <span>{item.name}</span>}
             </Link>
           )
+
+          if (isCollapsed) {
+            return (
+              <Tooltip key={item.name}>
+                <TooltipTrigger asChild>
+                  {linkContent}
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>{item.name}</p>
+                </TooltipContent>
+              </Tooltip>
+            )
+          }
+
+          return linkContent
         })}
 
         {/* Expand button - Only show when collapsed */}
         {isCollapsed && (
-          <button
-            onClick={toggleSidebar}
-            className="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors w-full justify-center"
-            title="Expand sidebar"
-          >
-            <ArrowRightFromLine className="h-5 w-5 flex-shrink-0" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggleSidebar}
+                className="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors w-full justify-center"
+              >
+                <ArrowRightFromLine className="h-5 w-5 flex-shrink-0" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Expand sidebar</p>
+            </TooltipContent>
+          </Tooltip>
         )}
       </nav>
     </div>
+    </TooltipProvider>
   )
 }

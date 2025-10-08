@@ -15,6 +15,8 @@ async function fetchCalendarEvents(filters: CalendarEventFilters = {}): Promise<
 
   if (filters.startDate) params.append('startDate', filters.startDate)
   if (filters.endDate) params.append('endDate', filters.endDate)
+  if (filters.costCenter) params.append('costCenter', filters.costCenter)
+  if (filters.costCenterGroup) params.append('costCenterGroup', filters.costCenterGroup)
   if (filters.eventTypes && filters.eventTypes.length > 0) {
     filters.eventTypes.forEach(type => params.append('eventTypes', type))
   }
