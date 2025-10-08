@@ -24,23 +24,82 @@ import { DealFilters } from '../../types'
 import { useFilter } from '../../contexts/filter-context'
 import { DealListPanel } from '../../components/deals/deal-list-panel'
 import { DealDetailsPanel } from '../../components/deals/deal-details-panel'
+import { DealTableView } from '../../components/deals/deal-table-view'
+import { ViewToggle } from '../../components/talent/view-toggle'
 import { Search, Plus, Briefcase, DollarSign, TrendingUp, Calendar, Target, Loader2 } from 'lucide-react'
 import { useLabels } from '../../hooks/useLabels'
+import { useUser } from '../../contexts/user-context'
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
+import { useAgentStats } from '../../hooks/useAgentStats'
 
 export default function DealsPage() {
   const { labels } = useLabels()
+  const { user } = useUser()
   const { filterSelection } = useFilter()
+  const [activeTab, setActiveTab] = useState<'my-deals' | 'all-deals'>(
+    user?.userType === 'AGENT' ? 'my-deals' : 'all-deals'
+  )
   const [filters, setFilters] = useState<DealFilters>({
     limit: 50,
     page: 1,
   })
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null)
+
+  // Initialize view from localStorage
+  const [view, setView] = useState<'modular' | 'table'>(() => {
+    if (typeof window !== 'undefined') {
+      const savedView = localStorage.getItem('deal-view-preference')
+      return (savedView === 'table' ? 'table' : 'modular') as 'modular' | 'table'
+    }
+    return 'modular'
+  })
+
   const [panelTopPosition, setPanelTopPosition] = useState<number>(0)
   const detailsPanelRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const dealListRef = useRef<HTMLDivElement>(null)
 
+  // Save view preference to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('deal-view-preference', view)
+  }, [view])
+
+  // Get agent stats to find the agent ID for the current user
+  const { data: agentStats } = useAgentStats()
+  const [agentId, setAgentId] = useState<string | null>(null)
+
   const { data: dealsResponse, isLoading, error } = useDeals(filters)
+
+  // Get agent ID from backend when agent stats are loaded
+  useEffect(() => {
+    const fetchAgentId = async () => {
+      if (!user?.email) return
+
+      try {
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        }
+
+        if (user.id) {
+          headers['x-user-id'] = user.id
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/agents?search=${encodeURIComponent(user.email)}&limit=1`, { headers })
+        const data = await response.json()
+
+        if (data.success && data.data && data.data.length > 0) {
+          setAgentId(data.data[0].id)
+        }
+      } catch (error) {
+        console.error('Failed to fetch agent ID:', error)
+      }
+    }
+
+    if (user?.userType === 'AGENT') {
+      fetchAgentId()
+    }
+  }, [user])
 
   // Update filters when filter selection changes
   useEffect(() => {
@@ -51,6 +110,15 @@ export default function DealsPage() {
       page: 1
     }))
   }, [filterSelection])
+
+  // Update filters when tab changes
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      ownerId: activeTab === 'my-deals' && agentId ? agentId : undefined,
+      page: 1
+    }))
+  }, [activeTab, agentId])
 
   const handleSearchChange = (value: string) => {
     setFilters({ ...filters, search: value || undefined, page: 1 })
@@ -198,11 +266,23 @@ export default function DealsPage() {
           </Button>
         </div>
 
+        {/* Tabs - For Agents Only */}
+        {user?.userType === 'AGENT' && (
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'my-deals' | 'all-deals')}>
+            <TabsList>
+              <TabsTrigger value="my-deals">My {labels.deals}</TabsTrigger>
+              <TabsTrigger value="all-deals">All {labels.deals}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+
         {/* Pipeline Stats */}
         <div className="grid gap-4 md:grid-cols-5">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total {labels.deals}</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {activeTab === 'my-deals' ? `My Total ${labels.deals}` : `Total ${labels.deals}`}
+              </CardTitle>
               <Briefcase className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -210,14 +290,16 @@ export default function DealsPage() {
                 {dealsResponse?.meta.total || 0}
               </div>
               <p className="text-xs text-muted-foreground">
-                All {labels.deals.toLowerCase()}
+                {activeTab === 'my-deals' ? `My ${labels.deals.toLowerCase()}` : `All ${labels.deals.toLowerCase()}`}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pipeline Value</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {activeTab === 'my-deals' ? 'My Pipeline Value' : 'Pipeline Value'}
+              </CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -232,7 +314,9 @@ export default function DealsPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Won {labels.deals}</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {activeTab === 'my-deals' ? `My Won ${labels.deals}` : `Won ${labels.deals}`}
+              </CardTitle>
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -247,7 +331,9 @@ export default function DealsPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Negotiating</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {activeTab === 'my-deals' ? 'My Negotiating' : 'Negotiating'}
+              </CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -262,7 +348,9 @@ export default function DealsPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Proposals</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {activeTab === 'my-deals' ? 'My Proposals' : 'Proposals'}
+              </CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -336,59 +424,73 @@ export default function DealsPage() {
         {/* Deal Pipeline - Panel Layout */}
         <Card>
           <CardHeader>
-            <CardTitle>{labels.deal} Pipeline</CardTitle>
-            <CardDescription>
-              {isLoading ? 'Loading...' : `Showing ${dealsResponse?.data.length || 0} of ${dealsResponse?.meta.total || 0} ${labels.deals.toLowerCase()}`}
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>
+                  {activeTab === 'my-deals' ? `My ${labels.deal} Pipeline` : `${labels.deal} Pipeline`}
+                </CardTitle>
+                <CardDescription>
+                  {isLoading ? 'Loading...' : `Showing ${dealsResponse?.data.length || 0} of ${dealsResponse?.meta.total || 0} ${labels.deals.toLowerCase()}`}
+                </CardDescription>
+              </div>
+              <ViewToggle view={view} onViewChange={setView} />
+            </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="text-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Loading {labels.deals.toLowerCase()}...</p>
-              </div>
-            ) : dealsResponse?.data.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p>No {labels.deals.toLowerCase()} found matching your criteria</p>
-              </div>
-            ) : (
-              <div ref={containerRef} className="relative">
-                <div className={`transition-all duration-300 ${selectedDealId ? 'lg:grid lg:grid-cols-3 gap-6' : ''}`}>
-                  <div ref={dealListRef}>
-                    <DealListPanel
+                  {isLoading ? (
+                    <div className="text-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">Loading {labels.deals.toLowerCase()}...</p>
+                    </div>
+                  ) : dealsResponse?.data.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p>No {labels.deals.toLowerCase()} found matching your criteria</p>
+                    </div>
+                  ) : view === 'table' ? (
+                    <DealTableView
                       deals={dealsResponse?.data || []}
-                      selectedDealId={selectedDealId}
-                      onDealClick={handleDealClick}
                       getStageVariant={getStageVariant}
                       formatCompactCurrency={formatCompactCurrency}
                       formatDate={formatDate}
                     />
-                  </div>
+                  ) : (
+                    <div ref={containerRef} className="relative">
+                      <div className={`transition-all duration-300 ${selectedDealId ? 'lg:grid lg:grid-cols-3 gap-6' : ''}`}>
+                        <div ref={dealListRef}>
+                          <DealListPanel
+                            deals={dealsResponse?.data || []}
+                            selectedDealId={selectedDealId}
+                            onDealClick={handleDealClick}
+                            getStageVariant={getStageVariant}
+                            formatCompactCurrency={formatCompactCurrency}
+                            formatDate={formatDate}
+                          />
+                        </div>
 
-                  {selectedDealId && (
-                    <div
-                      ref={detailsPanelRef}
-                      className="lg:col-span-2 animate-in slide-in-from-right duration-300"
-                      style={{
-                        position: selectedDealId ? 'sticky' : 'static',
-                        top: '1rem',
-                        alignSelf: 'flex-start'
-                      }}
-                    >
-                      <DealDetailsPanel
-                        deal={selectedDeal}
-                        emptyMessage={`Select a ${labels.deal.toLowerCase()} to view details`}
-                        formatCurrency={formatCurrency}
-                        formatDate={formatDate}
-                        getStageVariant={getStageVariant}
-                        onClose={() => setSelectedDealId(null)}
-                      />
+                        {selectedDealId && (
+                          <div
+                            ref={detailsPanelRef}
+                            className="lg:col-span-2 animate-in slide-in-from-right duration-300"
+                            style={{
+                              position: selectedDealId ? 'sticky' : 'static',
+                              top: '1rem',
+                              alignSelf: 'flex-start'
+                            }}
+                          >
+                            <DealDetailsPanel
+                              deal={selectedDeal}
+                              emptyMessage={`Select a ${labels.deal.toLowerCase()} to view details`}
+                              formatCurrency={formatCurrency}
+                              formatDate={formatDate}
+                              getStageVariant={getStageVariant}
+                              onClose={() => setSelectedDealId(null)}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
 

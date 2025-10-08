@@ -30,20 +30,42 @@ import { useInfiniteScroll } from '../../hooks/useInfiniteScroll'
 import { TalentFilters } from '../../types'
 import { TalentListPanel } from '../../components/talent/talent-list-panel'
 import { TalentDetailsPanel } from '../../components/talent/talent-details-panel'
+import { TalentTableView } from '../../components/talent/talent-table-view'
+import { ViewToggle } from '../../components/talent/view-toggle'
 import { useFilter } from '../../contexts/filter-context'
 import { useUser } from '../../contexts/user-context'
 import { Search, Plus, Users, Loader2 } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
 
 export default function TalentsPage() {
   const { filterSelection } = useFilter()
   const { user } = useUser()
+  const [activeTab, setActiveTab] = useState<'my-clients' | 'all-clients'>(
+    user?.userType === 'AGENT' ? 'my-clients' : 'all-clients'
+  )
+
+  // Initialize view from localStorage
+  const [view, setView] = useState<'modular' | 'table'>(() => {
+    if (typeof window !== 'undefined') {
+      const savedView = localStorage.getItem('talent-view-preference')
+      return (savedView === 'table' ? 'table' : 'modular') as 'modular' | 'table'
+    }
+    return 'modular'
+  })
+
   const [filters, setFilters] = useState<Omit<TalentFilters, 'page' | 'limit'>>({})
   const [selectedTalentId, setSelectedTalentId] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState('')
   const [panelTopPosition, setPanelTopPosition] = useState<number>(0)
+  const [agentId, setAgentId] = useState<string | null>(null)
   const detailsPanelRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const talentListRef = useRef<HTMLDivElement>(null)
+
+  // Save view preference to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('talent-view-preference', view)
+  }, [view])
 
   const {
     data,
@@ -82,6 +104,37 @@ export default function TalentsPage() {
     setSearchValue(value)
   }, [])
 
+  // Get agent ID from backend when user is an agent
+  useEffect(() => {
+    const fetchAgentId = async () => {
+      if (!user?.email) return
+
+      try {
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        }
+
+        if (user.id) {
+          headers['x-user-id'] = user.id
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/agents?search=${encodeURIComponent(user.email)}&limit=1`, { headers })
+        const data = await response.json()
+
+        if (data.success && data.data && data.data.length > 0) {
+          setAgentId(data.data[0].id)
+        }
+      } catch (error) {
+        console.error('Failed to fetch agent ID:', error)
+      }
+    }
+
+    if (user?.userType === 'AGENT') {
+      fetchAgentId()
+    }
+  }, [user])
+
   // Update filters when filter selection changes
   useEffect(() => {
     console.log('Talents page - filter selection changed:', filterSelection)
@@ -95,6 +148,14 @@ export default function TalentsPage() {
       return newFilters
     })
   }, [filterSelection])
+
+  // Update filters when tab changes
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      agent: activeTab === 'my-clients' && agentId ? agentId : undefined
+    }))
+  }, [activeTab, agentId])
 
   // Debounce search to avoid excessive API calls
   useEffect(() => {
@@ -245,11 +306,23 @@ export default function TalentsPage() {
           )}
         </div>
 
+        {/* Tabs - For Agents Only */}
+        {user?.userType === 'AGENT' && (
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'my-clients' | 'all-clients')}>
+            <TabsList>
+              <TabsTrigger value="my-clients">My Clients</TabsTrigger>
+              <TabsTrigger value="all-clients">All Clients</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Talent Clients</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {activeTab === 'my-clients' ? 'My Total Clients' : 'Total Talent Clients'}
+              </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -264,7 +337,9 @@ export default function TalentsPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Talent Clients</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {activeTab === 'my-clients' ? 'My Active Clients' : 'Active Talent Clients'}
+              </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -277,20 +352,25 @@ export default function TalentsPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">NIL Athletes</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {overallStats?.totalNil || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                NIL eligible
-              </p>
-            </CardContent>
-          </Card> 
+          {/* Hide NIL card for Brillstein cost center */}
+          {!(filterSelection.value?.includes('Brillstein') || filterSelection.value?.includes('CC501') || true) && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {activeTab === 'my-clients' ? 'My NIL Athletes' : 'NIL Athletes'}
+                </CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {overallStats?.totalNil || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  NIL eligible
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Filters */}
@@ -363,64 +443,78 @@ export default function TalentsPage() {
         {/* Talent Roster - Panel Layout */}
         <Card>
           <CardHeader>
-            <CardTitle>Talent Roster</CardTitle>
-            <CardDescription>
-              {isLoading ? 'Loading...' : `Showing ${talents.length} of ${filteredStats?.total || totalCount} ${Object.keys(filters).length > 0 ? 'filtered' : ''} talent clients`}
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>
+                  {activeTab === 'my-clients' ? 'My Talent Roster' : 'Talent Roster'}
+                </CardTitle>
+                <CardDescription>
+                  {isLoading ? 'Loading...' : `Showing ${talents.length} of ${filteredStats?.total || totalCount} ${Object.keys(filters).length > 0 ? 'filtered' : ''} talent clients`}
+                </CardDescription>
+              </div>
+              <ViewToggle view={view} onViewChange={setView} />
+            </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="text-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Loading talents...</p>
-              </div>
-            ) : talents.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p>No talents found matching your criteria</p>
-              </div>
-            ) : (
-              <div ref={containerRef} className="relative">
-                <div className={`transition-all duration-300 ${selectedTalentId ? 'lg:grid lg:grid-cols-3 gap-6' : ''}`}>
-                  <div ref={talentListRef}>
-                    <TalentListPanel
+                  {isLoading ? (
+                    <div className="text-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">Loading talents...</p>
+                    </div>
+                  ) : talents.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p>No talents found matching your criteria</p>
+                    </div>
+                  ) : view === 'table' ? (
+                    <TalentTableView
                       talents={talents.map(t => ({
                         ...t,
                         lastDealDate: t.lastDealDate || t.LastActivityDate
                       }))}
-                      selectedTalentId={selectedTalentId}
-                      onTalentClick={handleTalentClick}
                       formatDate={formatDate}
                       getStatusVariant={getStatusVariant}
+                      formatCurrency={formatCurrency}
                     />
-                  </div>
+                  ) : (
+                    <div ref={containerRef} className="relative">
+                      <div className={`transition-all duration-300 ${selectedTalentId ? 'lg:grid lg:grid-cols-3 gap-6' : ''}`}>
+                        <div ref={talentListRef}>
+                          <TalentListPanel
+                            talents={talents.map(t => ({
+                              ...t,
+                              lastDealDate: t.lastDealDate || t.LastActivityDate
+                            }))}
+                            selectedTalentId={selectedTalentId}
+                            onTalentClick={handleTalentClick}
+                            formatDate={formatDate}
+                            getStatusVariant={getStatusVariant}
+                          />
+                        </div>
 
-                  {selectedTalentId && (
-                    <div
-                      ref={detailsPanelRef}
-                      className="lg:col-span-2 animate-in slide-in-from-right duration-300"
-                      style={{
-                        position: selectedTalentId ? 'sticky' : 'static',
-                        top: '1rem',
-                        alignSelf: 'flex-start'
-                      }}
-                    >
-                      <TalentDetailsPanel
-                        talent={selectedTalent ? {
-                          ...selectedTalent,
-                          lastActivity: selectedTalent.lastDealDate || selectedTalent.LastActivityDate
-                        } : null}
-                        emptyMessage="Select a talent to view details"
-                        formatCurrency={formatCurrency}
-                        formatDate={formatDate}
-                        getStatusVariant={getStatusVariant}
-                        onClose={() => setSelectedTalentId(null)}
-                      />
+                        {selectedTalentId && (
+                          <div
+                            ref={detailsPanelRef}
+                            className="lg:col-span-2 animate-in slide-in-from-right duration-300"
+                            style={{
+                              position: selectedTalentId ? 'sticky' : 'static',
+                              top: '1rem',
+                              alignSelf: 'flex-start'
+                            }}
+                          >
+                            <TalentDetailsPanel
+                              talent={selectedTalent as any}
+                              emptyMessage="Select a talent to view details"
+                              formatCurrency={formatCurrency}
+                              formatDate={formatDate}
+                              getStatusVariant={getStatusVariant}
+                              onClose={() => setSelectedTalentId(null)}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
 

@@ -182,14 +182,25 @@ export function TalentQuickView({ talent, open, onOpenChange, onViewProfile }: T
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Image
-                  src={isDark ? "/logo_dark.png" : "/logo.png"}
-                  alt="Wasserman Logo"
-                  width={32}
-                  height={32}
-                  className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                  priority
-                />
+                {mounted ? (
+                  <Image
+                    src={isDark ? "/logo_dark.png" : "/logo.png"}
+                    alt="Wasserman Logo"
+                    width={32}
+                    height={32}
+                    className="h-4 w-4 object-contain"
+                    priority
+                  />
+                ) : (
+                  <Image
+                    src="/logo.png"
+                    alt="Wasserman Logo"
+                    width={32}
+                    height={32}
+                    className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
+                    priority
+                  />
+                )}
                 <span className="text-sm font-medium">Wass Revenue</span>
               </div>
               <span className="text-sm font-semibold">{formatCurrency(talent.wassRevenue)}</span>

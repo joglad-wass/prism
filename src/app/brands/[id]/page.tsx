@@ -6,11 +6,13 @@ import { AppLayout } from '../../../components/layout/app-layout'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
-import { BrandOverview } from '../../../components/brand/brand-overview'
+import { BrandCalendar } from '../../../components/brand/brand-calendar'
 import { BrandContact } from '../../../components/brand/brand-contact'
 import { BrandTalent } from '../../../components/brand/brand-talent'
 import { BrandDeals } from '../../../components/brand/brand-deals'
 import { BrandNotes } from '../../../components/brand/brand-notes'
+import { BrandSummaryBadges } from '../../../components/brand/brand-summary-badges'
+import { BrandProfessionalDetails } from '../../../components/brand/brand-professional-details'
 import {
   ArrowLeft,
   ExternalLink,
@@ -29,7 +31,7 @@ interface BrandDetailPageProps {
 export default function BrandDetailPage({ params }: BrandDetailPageProps) {
   const { labels } = useLabels()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('calendar')
   const [brand, setBrand] = useState<Brand | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -170,48 +172,52 @@ export default function BrandDetailPage({ params }: BrandDetailPageProps) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight gap-2">{brand.name}</h1>
-              {brand.altName && (
-                <p className="text-muted-foreground mt-1">
-                  Also known as: {brand.altName}
-                </p>
-              )}
-              <div className="flex flex-col gap-2 mt-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant={getStatusVariant(brand.status)}>
-                    {brand.status}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={getTypeVariant(brand.type)}>
-                    {brand.type}
-                  </Badge>
-                </div>
+        {/* Brand Info Header - Side by Side Layout */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6">
+            {/* Left Side - Brand Information */}
+            <div className="space-y-3">
+              {/* Name and Alt Name */}
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">{brand.name}</h1>
+                {brand.altName && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Also known as: {brand.altName}
+                  </p>
+                )}
               </div>
-              {brand.industry && (
-                <p className="text-muted-foreground flex items-center gap-2 mt-2">
-                  {brand.industry}
-                </p>
-              )}
+
+              {/* Status and Type Badges */}
+              <div className="flex items-center gap-2">
+                <Badge variant={getStatusVariant(brand.status)}>
+                  {brand.status}
+                </Badge>
+                <Badge variant={getTypeVariant(brand.type)}>
+                  {brand.type}
+                </Badge>
+              </div>
             </div>
+
+            {/* Right Side - Summary Badges */}
+            <BrandSummaryBadges brand={brand} />
           </div>
+
+          {/* Professional Details Badges - Bottom of Header */}
+          <BrandProfessionalDetails brand={brand} />
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="calendar">Calendar</TabsTrigger>
             <TabsTrigger value="talent">Talent</TabsTrigger>
             <TabsTrigger value="contact">Contact</TabsTrigger>
             <TabsTrigger value="deals">{labels.deals}</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview">
-            <BrandOverview brand={brand} />
+          <TabsContent value="calendar">
+            <BrandCalendar brand={brand} />
           </TabsContent>
 
           <TabsContent value="talent">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import { AppLayout } from '../../components/layout/app-layout'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -24,6 +24,8 @@ import { AgentFilters } from '../../types'
 import { useFilter } from '../../contexts/filter-context'
 import { AgentListPanel } from '../../components/agent/agent-list-panel'
 import { AgentDetailsPanel } from '../../components/agent/agent-details-panel'
+import { AgentTableView } from '../../components/agent/agent-table-view'
+import { ViewToggle } from '../../components/talent/view-toggle'
 import { useLabels } from '../../hooks/useLabels'
 import { Search, Plus, UserCheck, Users, Award, Loader2 } from 'lucide-react'
 
@@ -35,10 +37,25 @@ export default function AgentsPage() {
     page: 1,
   })
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+
+  // Initialize view from localStorage
+  const [view, setView] = useState<'modular' | 'table'>(() => {
+    if (typeof window !== 'undefined') {
+      const savedView = localStorage.getItem('agent-view-preference')
+      return (savedView === 'table' ? 'table' : 'modular') as 'modular' | 'table'
+    }
+    return 'modular'
+  })
+
   const [panelTopPosition, setPanelTopPosition] = useState<number>(0)
   const detailsPanelRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const agentListRef = useRef<HTMLDivElement>(null)
+
+  // Save view preference to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('agent-view-preference', view)
+  }, [view])
 
   const { data: agentsResponse, isLoading, error } = useAgents(filters)
 
@@ -271,7 +288,7 @@ export default function AgentsPage() {
           </CardContent>
         </Card>
 
-        {/* Top Performers */}
+        {/* Top Performers
         {agentsResponse?.data && agentsResponse.data.length > 0 && (
           <Card>
             <CardHeader>
@@ -317,58 +334,81 @@ export default function AgentsPage() {
               </div>
             </CardContent>
           </Card>
-        )}
+        )} */}
 
         {/* Agent Directory - Panel Layout */}
         <Card>
           <CardHeader>
-            <CardTitle>{labels.agent} Directory</CardTitle>
-            <CardDescription>
-              {isLoading ? 'Loading...' : `Showing ${agentsResponse?.data.length || 0} of ${agentsResponse?.meta.total || 0} ${labels.agents.toLowerCase()}`}
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>{labels.agent} Directory</CardTitle>
+                <CardDescription>
+                  {isLoading ? 'Loading...' : `Showing ${agentsResponse?.data.length || 0} of ${agentsResponse?.meta.total || 0} ${labels.agents.toLowerCase()}`}
+                </CardDescription>
+              </div>
+              <ViewToggle view={view} onViewChange={setView} />
+            </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="text-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Loading {labels.agents.toLowerCase()}...</p>
-              </div>
-            ) : agentsResponse?.data.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <UserCheck className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p>No {labels.agents.toLowerCase()} found matching your criteria</p>
-              </div>
-            ) : (
-              <div ref={containerRef} className="relative">
-                <div className={`transition-all duration-300 ${selectedAgentId ? 'lg:grid lg:grid-cols-3 gap-6' : ''}`}>
-                  <div ref={agentListRef}>
-                    <AgentListPanel
-                      agents={agentsResponse?.data || []}
-                      selectedAgentId={selectedAgentId}
-                      onAgentClick={handleAgentClick}
-                    />
+            {(() => {
+              if (isLoading) {
+                return (
+                  <div className="text-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Loading {labels.agents.toLowerCase()}...</p>
                   </div>
+                )
+              }
 
-                  {selectedAgentId && (
-                    <div
-                      ref={detailsPanelRef}
-                      className="lg:col-span-2 animate-in slide-in-from-right duration-300"
-                      style={{
-                        position: selectedAgentId ? 'sticky' : 'static',
-                        top: '1rem',
-                        alignSelf: 'flex-start'
-                      }}
-                    >
-                      <AgentDetailsPanel
-                        agent={selectedAgent}
-                        emptyMessage={`Select an ${labels.agent.toLowerCase()} to view details`}
-                        onClose={() => setSelectedAgentId(null)}
+              if (!agentsResponse || agentsResponse.data.length === 0) {
+                return (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <UserCheck className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                    <p>No {labels.agents.toLowerCase()} found matching your criteria</p>
+                  </div>
+                )
+              }
+
+              if (view === 'table') {
+                return (
+                  <AgentTableView
+                    agents={agentsResponse.data}
+                  />
+                )
+              }
+
+              return (
+                <div ref={containerRef} className="relative">
+                  <div className={`transition-all duration-300 ${selectedAgentId ? 'lg:grid lg:grid-cols-3 gap-6' : ''}`}>
+                    <div ref={agentListRef}>
+                      <AgentListPanel
+                        agents={agentsResponse.data}
+                        selectedAgentId={selectedAgentId}
+                        onAgentClick={handleAgentClick}
                       />
                     </div>
-                  )}
+
+                    {selectedAgentId && (
+                      <div
+                        ref={detailsPanelRef}
+                        className="lg:col-span-2 animate-in slide-in-from-right duration-300"
+                        style={{
+                          position: selectedAgentId ? 'sticky' : 'static',
+                          top: '1rem',
+                          alignSelf: 'flex-start'
+                        }}
+                      >
+                        <AgentDetailsPanel
+                          agent={selectedAgent}
+                          emptyMessage={`Select an ${labels.agent.toLowerCase()} to view details`}
+                          onClose={() => setSelectedAgentId(null)}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </CardContent>
         </Card>
 

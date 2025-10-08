@@ -6,12 +6,14 @@ import { AppLayout } from '../../../components/layout/app-layout'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
-import { TalentOverview } from '../../../components/talent/talent-overview'
+import { TalentCalendar } from '../../../components/talent/talent-calendar'
 import { TalentJourney } from '../../../components/talent/talent-journey'
 import { TalentContact } from '../../../components/talent/talent-contact'
 import { TalentDeals } from '../../../components/talent/talent-deals'
 import { TalentNotes } from '../../../components/talent/talent-notes'
 import { TalentBrands } from '../../../components/talent/talent-brands'
+import { ProfessionalDetailsBadges } from '../../../components/talent/professional-details-badges'
+import { FinancialSummaryRail } from '../../../components/talent/financial-summary-rail'
 import {
   ArrowLeft,
   ExternalLink,
@@ -32,7 +34,7 @@ interface TalentDetailPageProps {
 export default function TalentDetailPage({ params }: TalentDetailPageProps) {
   const { labels } = useLabels()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('calendar')
   const [talent, setTalent] = useState<TalentDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -132,213 +134,224 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <div className="flex items-center gap-2">
-            {(talent.Id || talent.salesforceId) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleExternalLink('salesforce')}
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Salesforce
-              </Button>
-            )}
-            {(talent.Workday_ID__c || talent.workdayId) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleExternalLink('workday')}
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Workday
-              </Button>
-            )}
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2">
+              {(talent.Id || talent.salesforceId) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExternalLink('salesforce')}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Salesforce
+                </Button>
+              )}
+              {(talent.Workday_ID__c || talent.workdayId) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExternalLink('workday')}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Workday
+                </Button>
+              )}
+            </div>
+            
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        {/* Talent Info Header - Side by Side Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6">
+          {/* Left Side - Talent Information */}
+          <div className="space-y-3">
+            {/* Name and Status */}
             <div>
-              <h1 className="text-3xl font-bold tracking-tight gap-2">{talent.Name}</h1>
-              <p className="text-muted-foreground flex items-center h-8">
+              <h1 className="text-3xl font-bold tracking-tight">{talent.Name}</h1>
+              <div className="flex items-center gap-3 mt-2">
                 <Badge variant={(talent.Status__c || talent.status)?.toLowerCase() === 'active' ? 'default' : 'secondary'}>
                   {talent.Status__c || talent.status || 'Unknown'}
                 </Badge>
-              </p>
-              {(talent.Sport__c || talent.CSM_Sport__c || talent.sport) && (
-                <p className="text-muted-foreground flex items-center gap-2">
-                  {talent.Sport__c || talent.CSM_Sport__c || talent.sport}
-                </p>
-              )}
-              {(talent.Team__c || talent.team) && (
-                <p className="text-muted-foreground flex items-center gap-2">
-                  {talent.Team__c || talent.team}
-                </p>
-              )}
-              {(talent.City__c || talent.location) && (
-                <p className="text-muted-foreground flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  {talent.City__c || talent.location}
-                </p>
-              )}
-              {/* Social Media Icons */}
-              {((talent.Instagram__c || talent.contacts?.[0]?.instagram) ||
-                (talent.X_Twitter__c || talent.contacts?.[0]?.twitter) ||
-                (talent.Facebook__c || talent.contacts?.[0]?.facebook) ||
-                (talent.YouTube__c || talent.contacts?.[0]?.youtube) ||
-                talent.contacts?.[0]?.tiktok ||
-                talent.contacts?.[0]?.twitch ||
-                talent.contacts?.[0]?.spotify ||
-                talent.contacts?.[0]?.soundcloud) && (
-                <div className="flex items-center gap-2 mt-2">
-                  {(talent.Instagram__c || talent.contacts?.[0]?.instagram) && (
-                    <a
-                      href={`https://instagram.com/${(talent.Instagram__c || talent.contacts?.[0]?.instagram || '').replace('@', '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:opacity-80 transition-opacity"
-                    >
-                      <Image
-                        src="/instagram.png"
-                        alt="Instagram"
-                        width={32}
-                        height={32}
-                        className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        unoptimized
-                      />
-                    </a>
-                  )}
-                  {(talent.X_Twitter__c || talent.contacts?.[0]?.twitter) && (
-                    <a
-                      href={`https://twitter.com/${(talent.X_Twitter__c || talent.contacts?.[0]?.twitter || '').replace('@', '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gray-900 dark:text-gray-100 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                    >
-                      <Image
-                        src="/twitter.png"
-                        alt="Twitter/X"
-                        width={32}
-                        height={32}
-                        className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        unoptimized
-                      />
-                    </a>
-                  )}
-                  {(talent.Facebook__c || talent.contacts?.[0]?.facebook) && (
-                    <a
-                      href={`https://facebook.com/${talent.Facebook__c || talent.contacts?.[0]?.facebook}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:opacity-80 transition-opacity"
-                    >
-                      <Image
-                        src="/facebook.png"
-                        alt="Facebook"
-                        width={32}
-                        height={32}
-                        className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        unoptimized
-                      />
-                    </a>
-                  )}
-                  {(talent.YouTube__c || talent.contacts?.[0]?.youtube) && (
-                    <a
-                      href={(talent.YouTube__c || talent.contacts?.[0]?.youtube)?.startsWith('http')
-                        ? (talent.YouTube__c || talent.contacts?.[0]?.youtube || '')
-                        : `https://youtube.com/c/${talent.YouTube__c || talent.contacts?.[0]?.youtube}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:opacity-80 transition-opacity"
-                    >
-                      <Image
-                        src="/youtube.png"
-                        alt="YouTube"
-                        width={32}
-                        height={32}
-                        className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        unoptimized
-                      />
-                    </a>
-                  )}
-                  {talent.contacts?.[0]?.tiktok && (
-                    <a
-                      href={talent.contacts[0].tiktok.startsWith('http') ? talent.contacts[0].tiktok : `https://tiktok.com/@${talent.contacts[0].tiktok.replace('@', '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:opacity-80 transition-opacity"
-                    >
-                      <Image
-                        src="/tiktok.png"
-                        alt="TikTok"
-                        width={32}
-                        height={32}
-                        className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        unoptimized
-                      />
-                    </a>
-                  )}
-                  {talent.contacts?.[0]?.twitch && (
-                    <a
-                      href={talent.contacts[0].twitch.startsWith('http') ? talent.contacts[0].twitch : `https://twitch.tv/${talent.contacts[0].twitch}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:opacity-80 transition-opacity"
-                    >
-                      <Image
-                        src="/twitch.png"
-                        alt="Twitch"
-                        width={32}
-                        height={32}
-                        className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        unoptimized
-                      />
-                    </a>
-                  )}
-                  {talent.contacts?.[0]?.spotify && (
-                    <a
-                      href={talent.contacts[0].spotify.startsWith('http') ? talent.contacts[0].spotify : `https://open.spotify.com/artist/${talent.contacts[0].spotify}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:opacity-80 transition-opacity"
-                    >
-                      <Image
-                        src="/spotify.png"
-                        alt="Spotify"
-                        width={32}
-                        height={32}
-                        className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        unoptimized
-                      />
-                    </a>
-                  )}
-                  {talent.contacts?.[0]?.soundcloud && (
-                    <a
-                      href={talent.contacts[0].soundcloud.startsWith('http') ? talent.contacts[0].soundcloud : `https://soundcloud.com/${talent.contacts[0].soundcloud}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:opacity-80 transition-opacity"
-                    >
-                      <Image
-                        src="/soundcloud.png"
-                        alt="SoundCloud"
-                        width={32}
-                        height={32}
-                        className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
-                        unoptimized
-                      />
-                    </a>
-                  )}
-                </div>
-              )}
+                {(talent.Sport__c || talent.CSM_Sport__c || talent.sport) && (
+                  <span className="text-sm text-muted-foreground">
+                    {talent.Sport__c || talent.CSM_Sport__c || talent.sport}
+                  </span>
+                )}
+                {(talent.Team__c || talent.team) && (
+                  <span className="text-sm text-muted-foreground">
+                    | {talent.Team__c || talent.team}
+                  </span>
+                )}
+                {(talent.City__c || talent.location) && (
+                  <span className="text-sm text-muted-foreground flex items-center gap-1">
+                    | <MapPin className="h-3.5 w-3.5" />
+                    {talent.City__c || talent.location}
+                  </span>
+                )}
+              </div>
             </div>
+
+            {/* Social Media Icons */}
+            {((talent.Instagram__c || talent.contacts?.[0]?.instagram) ||
+              (talent.X_Twitter__c || talent.contacts?.[0]?.twitter) ||
+              (talent.Facebook__c || talent.contacts?.[0]?.facebook) ||
+              (talent.YouTube__c || talent.contacts?.[0]?.youtube) ||
+              talent.contacts?.[0]?.tiktok ||
+              talent.contacts?.[0]?.twitch ||
+              talent.contacts?.[0]?.spotify ||
+              talent.contacts?.[0]?.soundcloud) && (
+              <div className="flex items-center gap-2">
+                {(talent.Instagram__c || talent.contacts?.[0]?.instagram) && (
+                  <a
+                    href={`https://instagram.com/${(talent.Instagram__c || talent.contacts?.[0]?.instagram || '').replace('@', '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:opacity-80 transition-opacity"
+                  >
+                    <Image
+                      src="/instagram.png"
+                      alt="Instagram"
+                      width={32}
+                      height={32}
+                      className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
+                      unoptimized
+                    />
+                  </a>
+                )}
+                {(talent.X_Twitter__c || talent.contacts?.[0]?.twitter) && (
+                  <a
+                    href={`https://twitter.com/${(talent.X_Twitter__c || talent.contacts?.[0]?.twitter || '').replace('@', '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-900 dark:text-gray-100 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                  >
+                    <Image
+                      src="/twitter.png"
+                      alt="Twitter/X"
+                      width={32}
+                      height={32}
+                      className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
+                      unoptimized
+                    />
+                  </a>
+                )}
+                {(talent.Facebook__c || talent.contacts?.[0]?.facebook) && (
+                  <a
+                    href={`https://facebook.com/${talent.Facebook__c || talent.contacts?.[0]?.facebook}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:opacity-80 transition-opacity"
+                  >
+                    <Image
+                      src="/facebook.png"
+                      alt="Facebook"
+                      width={32}
+                      height={32}
+                      className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
+                      unoptimized
+                    />
+                  </a>
+                )}
+                {(talent.YouTube__c || talent.contacts?.[0]?.youtube) && (
+                  <a
+                    href={(talent.YouTube__c || talent.contacts?.[0]?.youtube)?.startsWith('http')
+                      ? (talent.YouTube__c || talent.contacts?.[0]?.youtube || '')
+                      : `https://youtube.com/c/${talent.YouTube__c || talent.contacts?.[0]?.youtube}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:opacity-80 transition-opacity"
+                  >
+                    <Image
+                      src="/youtube.png"
+                      alt="YouTube"
+                      width={32}
+                      height={32}
+                      className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
+                      unoptimized
+                    />
+                  </a>
+                )}
+                {talent.contacts?.[0]?.tiktok && (
+                  <a
+                    href={talent.contacts[0].tiktok.startsWith('http') ? talent.contacts[0].tiktok : `https://tiktok.com/@${talent.contacts[0].tiktok.replace('@', '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:opacity-80 transition-opacity"
+                  >
+                    <Image
+                      src="/tiktok.png"
+                      alt="TikTok"
+                      width={32}
+                      height={32}
+                      className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
+                      unoptimized
+                    />
+                  </a>
+                )}
+                {talent.contacts?.[0]?.twitch && (
+                  <a
+                    href={talent.contacts[0].twitch.startsWith('http') ? talent.contacts[0].twitch : `https://twitch.tv/${talent.contacts[0].twitch}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:opacity-80 transition-opacity"
+                  >
+                    <Image
+                      src="/twitch.png"
+                      alt="Twitch"
+                      width={32}
+                      height={32}
+                      className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
+                      unoptimized
+                    />
+                  </a>
+                )}
+                {talent.contacts?.[0]?.spotify && (
+                  <a
+                    href={talent.contacts[0].spotify.startsWith('http') ? talent.contacts[0].spotify : `https://open.spotify.com/artist/${talent.contacts[0].spotify}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:opacity-80 transition-opacity"
+                  >
+                    <Image
+                      src="/spotify.png"
+                      alt="Spotify"
+                      width={32}
+                      height={32}
+                      className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
+                      unoptimized
+                    />
+                  </a>
+                )}
+                {talent.contacts?.[0]?.soundcloud && (
+                  <a
+                    href={talent.contacts[0].soundcloud.startsWith('http') ? talent.contacts[0].soundcloud : `https://soundcloud.com/${talent.contacts[0].soundcloud}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:opacity-80 transition-opacity"
+                  >
+                    <Image
+                      src="/soundcloud.png"
+                      alt="SoundCloud"
+                      width={32}
+                      height={32}
+                      className="h-4 w-4 object-contain dark:brightness-0 dark:invert"
+                      unoptimized
+                    />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Right Side - Financial Summary */}
+          <FinancialSummaryRail talent={talent} />
+          <ProfessionalDetailsBadges talent={talent} />
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="calendar">Calendar</TabsTrigger>
             <TabsTrigger value="journey">Journey</TabsTrigger>
             <TabsTrigger value="contact">Contact</TabsTrigger>
             <TabsTrigger value="deals">{labels.deals}</TabsTrigger>
@@ -346,8 +359,8 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
             <TabsTrigger value="notes">Notes</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview">
-            <TalentOverview talent={talent} />
+          <TabsContent value="calendar">
+            <TalentCalendar talent={talent} />
           </TabsContent>
 
           <TabsContent value="journey">

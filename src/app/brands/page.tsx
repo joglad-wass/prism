@@ -24,15 +24,32 @@ import { useInfiniteScroll } from '../../hooks/useInfiniteScroll'
 import { BrandFilters, Brand } from '../../types'
 import { BrandListPanel } from '../../components/brand/brand-list-panel'
 import { BrandDetailsPanel } from '../../components/brand/brand-details-panel'
+import { BrandTableView } from '../../components/brand/brand-table-view'
+import { ViewToggle } from '../../components/talent/view-toggle'
 import { Search, Plus, Building2, DollarSign, TrendingUp, Loader2 } from 'lucide-react'
 
 export default function BrandsPage() {
   const [filters, setFilters] = useState<Omit<BrandFilters, 'page' | 'limit'>>({})
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null)
+
+  // Initialize view from localStorage
+  const [view, setView] = useState<'modular' | 'table'>(() => {
+    if (typeof window !== 'undefined') {
+      const savedView = localStorage.getItem('brand-view-preference')
+      return (savedView === 'table' ? 'table' : 'modular') as 'modular' | 'table'
+    }
+    return 'modular'
+  })
+
   const [panelTopPosition, setPanelTopPosition] = useState<number>(0)
   const detailsPanelRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const brandListRef = useRef<HTMLDivElement>(null)
+
+  // Save view preference to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('brand-view-preference', view)
+  }, [view])
 
   const {
     data,
@@ -310,10 +327,15 @@ export default function BrandsPage() {
         {/* Brand Portfolio - Panel Layout */}
         <Card>
           <CardHeader>
-            <CardTitle>Brand Portfolio</CardTitle>
-            <CardDescription>
-              {isLoading ? 'Loading...' : `Showing ${brands.length} of ${filteredStats?.total || totalCount} ${Object.keys(filters).length > 0 ? 'filtered' : ''} brands`}
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Brand Portfolio</CardTitle>
+                <CardDescription>
+                  {isLoading ? 'Loading...' : `Showing ${brands.length} of ${filteredStats?.total || totalCount} ${Object.keys(filters).length > 0 ? 'filtered' : ''} brands`}
+                </CardDescription>
+              </div>
+              <ViewToggle view={view} onViewChange={setView} />
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -326,6 +348,14 @@ export default function BrandsPage() {
                 <Building2 className="h-12 w-12 mx-auto mb-3 opacity-20" />
                 <p>No brands found matching your criteria</p>
               </div>
+            ) : view === 'table' ? (
+              <BrandTableView
+                brands={brands}
+                getStatusVariant={getStatusVariant}
+                getTypeVariant={getTypeVariant}
+                formatCurrency={formatCurrency}
+                formatDate={formatDate}
+              />
             ) : (
               <div ref={containerRef} className="relative">
                 <div className={`transition-all duration-300 ${selectedBrandId ? 'lg:grid lg:grid-cols-3 gap-6' : ''}`}>

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Badge } from '../ui/badge'
 import { Mail, Phone, Users, Briefcase } from 'lucide-react'
 import { useLabels } from '../../hooks/useLabels'
@@ -39,7 +40,13 @@ export function AgentListPanel({
             }`}
             onClick={() => onAgentClick(agent.id)}
           >
-            <div className="font-medium text-sm mb-1">{agent.name}</div>
+            <Link
+              href={`/agents/${agent.id}`}
+              className="font-medium text-sm mb-2 hover:text-primary hover:underline inline-block"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {agent.name}
+            </Link>
             {agent.title && (
               <div className="text-xs text-muted-foreground mb-2">
                 {agent.title}

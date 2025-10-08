@@ -41,8 +41,6 @@ interface BrandQuickViewProps {
 }
 
 export function BrandQuickView({ brand, open, onOpenChange, onViewProfile }: BrandQuickViewProps) {
-  if (!brand) return null
-
   const { labels } = useLabels()
   const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -50,6 +48,8 @@ export function BrandQuickView({ brand, open, onOpenChange, onViewProfile }: Bra
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  if (!brand) return null
 
   const isDark = mounted && (theme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches))
 

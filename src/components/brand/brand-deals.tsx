@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
@@ -27,6 +27,8 @@ import { useRouter } from 'next/navigation'
 
 import { Brand } from '../../types'
 import { useLabels } from '../../hooks/useLabels'
+import { BrandDealsTableView } from './brand-deals-table-view'
+import { ViewToggle } from '../talent/view-toggle'
 
 interface BrandDealsProps {
   brand: Brand
@@ -36,6 +38,20 @@ export function BrandDeals({ brand }: BrandDealsProps) {
   const { labels } = useLabels()
   const router = useRouter()
   const [selectedDeal, setSelectedDeal] = useState<any>(null)
+
+  // Initialize view from localStorage
+  const [view, setView] = useState<'modular' | 'table'>(() => {
+    if (typeof window !== 'undefined') {
+      const savedView = localStorage.getItem('brand-deals-view-preference')
+      return (savedView === 'table' ? 'table' : 'modular') as 'modular' | 'table'
+    }
+    return 'modular'
+  })
+
+  // Save view preference to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('brand-deals-view-preference', view)
+  }, [view])
 
   const formatCurrency = (amount?: number) => {
     if (!amount) return 'N/A'
@@ -134,15 +150,46 @@ export function BrandDeals({ brand }: BrandDealsProps) {
       )}
 
       {/* Deals List and Details */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left: Deals List */}
-        <Card className="lg:col-span-1">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Briefcase className="h-5 w-5" />
-            All {labels.deals} ({brand.deals?.length || 0})
-          </CardTitle>
-        </CardHeader>
+      {view === 'table' ? (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                All {labels.deals} ({brand.deals?.length || 0})
+              </CardTitle>
+              <ViewToggle view={view} onViewChange={setView} />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {!brand.deals || brand.deals.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p>No {labels.deals.toLowerCase()} found for this brand</p>
+              </div>
+            ) : (
+              <BrandDealsTableView
+                deals={brand.deals}
+                formatCurrency={formatCurrency}
+                formatDate={formatDate}
+                getStageColor={getStageColor}
+              />
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Left: Deals List */}
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Briefcase className="h-5 w-5" />
+                  All {labels.deals} ({brand.deals?.length || 0})
+                </CardTitle>
+                <ViewToggle view={view} onViewChange={setView} />
+              </div>
+            </CardHeader>
         <CardContent>
           {!brand.deals || brand.deals.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
@@ -331,6 +378,7 @@ export function BrandDeals({ brand }: BrandDealsProps) {
         </CardContent>
       </Card>
       </div>
+      )}
     </div>
   )
 }

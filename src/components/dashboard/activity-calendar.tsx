@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
-import { Calendar, CalendarDayButton } from '../ui/calendar'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -12,8 +11,6 @@ import { useLabels } from '../../hooks/useLabels'
 import { CalendarEvent, CalendarEventType } from '../../types'
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, isSameDay, parseISO } from 'date-fns'
 import Link from 'next/link'
-import { DayButton } from 'react-day-picker'
-import type { ComponentProps } from 'react'
 import { ResizableDivider } from '../ui/resizable-divider'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
@@ -231,12 +228,6 @@ export function ActivityCalendar() {
     selectedDate ? isSameDay(parseISO(event.date), selectedDate) : false
   )
 
-  // Get events for hovered date (for tooltip in full-width view)
-  const hoveredDateEvents = useMemo(() => {
-    if (!filteredEvents || !hoveredDate || viewMode !== 'fullWidth') return null
-    return filteredEvents.filter((event) => isSameDay(parseISO(event.date), hoveredDate))
-  }, [filteredEvents, hoveredDate, viewMode])
-
   // Get fallback events if no events on selected date
   const fallbackEvents = useMemo(() => {
     if (!filteredEvents || !selectedDate || (selectedDateEvents && selectedDateEvents.length > 0)) {
@@ -276,23 +267,6 @@ export function ActivityCalendar() {
     return null
   }, [filteredEvents, selectedDate, selectedDateEvents])
 
-  // Group events by date and get unique event types per date
-  const eventsByDate = useMemo(() => {
-    if (!filteredEvents) return new Map<string, Set<CalendarEventType>>()
-
-    const map = new Map<string, Set<CalendarEventType>>()
-
-    filteredEvents.forEach((event) => {
-      const dateKey = format(parseISO(event.date), 'yyyy-MM-dd')
-      if (!map.has(dateKey)) {
-        map.set(dateKey, new Set())
-      }
-      map.get(dateKey)!.add(event.type)
-    })
-
-    return map
-  }, [filteredEvents])
-
   // Filter handlers
   const toggleEventType = useCallback((eventType: CalendarEventType) => {
     setSelectedEventTypes((prev) => {
@@ -329,6 +303,111 @@ export function ActivityCalendar() {
     setSelectedEventTypes(new Set(Object.keys(EVENT_TYPE_LABELS) as CalendarEventType[]))
   }, [])
 
+  // Calendar grid generation helpers
+  const generateCalendarDays = () => {
+    const currentMonthNum = currentMonth.getMonth()
+    const currentYear = currentMonth.getFullYear()
+
+    const firstDay = new Date(currentYear, currentMonthNum, 1)
+    const lastDay = new Date(currentYear, currentMonthNum + 1, 0)
+    const startingDayOfWeek = firstDay.getDay()
+
+    const days: Array<{
+      day: number | null
+      date: Date | null
+      isCurrentMonth: boolean
+      events: CalendarEvent[]
+    }> = []
+
+    // Add empty cells for days before month starts
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push({ day: null, date: null, isCurrentMonth: false, events: [] })
+    }
+
+    // Add days of the month
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const date = new Date(currentYear, currentMonthNum, day)
+      const eventsOnDay = filteredEvents?.filter((event) =>
+        isSameDay(parseISO(event.date), date)
+      ) || []
+
+      days.push({
+        day,
+        date,
+        isCurrentMonth: true,
+        events: eventsOnDay
+      })
+    }
+
+    return days
+  }
+
+  const previousMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))
+  }
+
+  const nextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
+  }
+
+  const goToToday = () => {
+    const today = new Date()
+    setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1))
+    setSelectedDate(today)
+  }
+
+  const isCurrentMonth = () => {
+    const today = new Date()
+    return currentMonth.getMonth() === today.getMonth() &&
+           currentMonth.getFullYear() === today.getFullYear()
+  }
+
+  const jumpToNextEvent = () => {
+    if (!filteredEvents) return
+
+    const currentMonthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
+
+    // Find the next event after the current month
+    const nextEvent = filteredEvents
+      .filter(event => parseISO(event.date) > currentMonthEnd)
+      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())[0]
+
+    if (nextEvent) {
+      const eventDate = parseISO(nextEvent.date)
+      setCurrentMonth(new Date(eventDate.getFullYear(), eventDate.getMonth(), 1))
+      setSelectedDate(eventDate)
+    }
+  }
+
+  const jumpToPreviousEvent = () => {
+    if (!filteredEvents) return
+
+    const currentMonthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
+
+    // Find the previous event before the current month
+    const previousEvent = filteredEvents
+      .filter(event => parseISO(event.date) < currentMonthStart)
+      .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())[0]
+
+    if (previousEvent) {
+      const eventDate = parseISO(previousEvent.date)
+      setCurrentMonth(new Date(eventDate.getFullYear(), eventDate.getMonth(), 1))
+      setSelectedDate(eventDate)
+    }
+  }
+
+  const hasNextEvent = () => {
+    if (!filteredEvents) return false
+    const currentMonthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
+    return filteredEvents.some(event => parseISO(event.date) > currentMonthEnd)
+  }
+
+  const hasPreviousEvent = () => {
+    if (!filteredEvents) return false
+    const currentMonthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
+    return filteredEvents.some(event => parseISO(event.date) < currentMonthStart)
+  }
+
   // View mode handlers
   const handleViewModeToggle = (mode: ViewMode) => {
     setViewMode(mode)
@@ -360,81 +439,6 @@ export function ActivityCalendar() {
     return '#'
   }
 
-  // Custom day button with event indicators and hover tooltips
-  const CustomDayButton = (props: ComponentProps<typeof DayButton>) => {
-    const { day, className, ...rest } = props
-    const dateKey = format(day.date, 'yyyy-MM-dd')
-    const eventTypes = eventsByDate.get(dateKey)
-    const dayEvents = filteredEvents?.filter((event) => isSameDay(parseISO(event.date), day.date)) || []
-
-    const buttonContent = (
-      <CalendarDayButton
-        {...rest}
-        day={day}
-        className="w-full h-full"
-        onMouseEnter={() => viewMode === 'fullWidth' && setHoveredDate(day.date)}
-        onMouseLeave={() => viewMode === 'fullWidth' && setHoveredDate(undefined)}
-      >
-        <div className="flex flex-col items-center justify-center gap-1">
-          <span>{day.date.getDate()}</span>
-          {eventTypes && eventTypes.size > 0 && (
-            <div className="flex gap-0.5 items-center justify-center">
-              {Array.from(eventTypes)
-                .slice(0, 4)
-                .map((type, index) => (
-                  <div
-                    key={index}
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{
-                      backgroundColor: EVENT_TYPE_COLORS[type],
-                    }}
-                  />
-                ))}
-            </div>
-          )}
-        </div>
-      </CalendarDayButton>
-    )
-
-    // Show tooltip in full-width view for days with events
-    if (viewMode === 'fullWidth' && dayEvents.length > 0) {
-      return (
-        <Tooltip open={hoveredDate ? isSameDay(hoveredDate, day.date) : false}>
-          <TooltipTrigger asChild>
-            {buttonContent}
-          </TooltipTrigger>
-          <TooltipContent side="right" className="max-w-xs">
-            <div className="space-y-2">
-              <p className="font-semibold text-xs">{format(day.date, 'MMMM d, yyyy')}</p>
-              <div className="space-y-1">
-                {dayEvents.slice(0, 5).map((event) => (
-                  <div key={event.id} className="flex items-start gap-2 text-xs">
-                    <div
-                      className="w-2 h-2 rounded-full mt-0.5 flex-shrink-0"
-                      style={{ backgroundColor: EVENT_TYPE_COLORS[event.type] }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium">{event.title}</p>
-                      <p className="text-muted-foreground text-[10px]">
-                        {EVENT_TYPE_LABELS[event.type]}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                {dayEvents.length > 5 && (
-                  <p className="text-[10px] text-muted-foreground text-center">
-                    +{dayEvents.length - 5} more
-                  </p>
-                )}
-              </div>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      )
-    }
-
-    return buttonContent
-  }
 
   return (
     <TooltipProvider>
@@ -708,25 +712,166 @@ export function ActivityCalendar() {
                   transition: 'width 0.2s ease-in-out',
                 }}
               >
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDayClick}
-                  month={currentMonth}
-                  onMonthChange={setCurrentMonth}
-                  className="rounded-md border w-full"
-                  classNames={{
-                    table: 'w-full border-collapse',
-                    weekdays: 'grid grid-cols-7 w-full',
-                    weekday:
-                      'text-center h-12 flex items-center justify-center text-muted-foreground font-normal text-sm',
-                    week: 'grid grid-cols-7 w-full',
-                    day: 'h-20 p-0 text-center flex items-center justify-center',
-                  }}
-                  components={{
-                    DayButton: CustomDayButton,
-                  }}
-                />
+                <div className="rounded-md border w-full p-4">
+                  {/* Month/Year Header with Navigation */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={jumpToPreviousEvent}
+                        disabled={!hasPreviousEvent()}
+                        title="Jump to previous event"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        <ChevronLeft className="h-4 w-4 -ml-3" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={previousMonth}
+                        title="Previous month"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToToday}
+                        disabled={isCurrentMonth()}
+                        title="Go to today"
+                      >
+                        Today
+                      </Button>
+                    </div>
+                    <div className="text-lg font-semibold">
+                      {format(currentMonth, 'MMMM yyyy')}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={nextMonth}
+                        title="Next month"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={jumpToNextEvent}
+                        disabled={!hasNextEvent()}
+                        title="Jump to next event"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-4 w-4 -ml-3" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Calendar Grid */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {/* Day headers */}
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                      <div key={day} className="text-center text-xs font-medium text-muted-foreground p-2">
+                        {day}
+                      </div>
+                    ))}
+
+                    {/* Calendar days */}
+                    {generateCalendarDays().map((dayInfo, index) => (
+                      <div
+                        key={index}
+                        className={cn(
+                          'min-h-[80px] p-1 border rounded-lg cursor-pointer transition-colors',
+                          dayInfo.isCurrentMonth
+                            ? dayInfo.events.length > 0
+                              ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900 hover:bg-blue-100 dark:hover:bg-blue-950/50'
+                              : 'bg-background hover:bg-muted/50'
+                            : 'bg-muted/20',
+                          selectedDate && dayInfo.date && isSameDay(selectedDate, dayInfo.date) && 'ring-2 ring-primary'
+                        )}
+                        onClick={() => dayInfo.date && handleDayClick(dayInfo.date)}
+                        onMouseEnter={() => viewMode === 'fullWidth' && dayInfo.date && setHoveredDate(dayInfo.date)}
+                        onMouseLeave={() => viewMode === 'fullWidth' && setHoveredDate(undefined)}
+                      >
+                        {dayInfo.day && (
+                          <>
+                            <div className={cn(
+                              'text-xs font-medium p-1',
+                              dayInfo.events.length > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'
+                            )}>
+                              {dayInfo.day}
+                            </div>
+
+                            {/* Events for this day */}
+                            <div className="space-y-1">
+                              {dayInfo.events.slice(0, 3).map((event, eventIndex) => (
+                                <Tooltip key={eventIndex}>
+                                  <TooltipTrigger asChild>
+                                    <div
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        window.location.href = getEventLink(event)
+                                      }}
+                                      className="text-[10px] p-1 rounded truncate cursor-pointer hover:ring-2 hover:ring-offset-1 bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400 hover:ring-blue-400"
+                                      style={{
+                                        backgroundColor: `${EVENT_TYPE_COLORS[event.type]}20`,
+                                        borderLeft: `3px solid ${EVENT_TYPE_COLORS[event.type]}`
+                                      }}
+                                    >
+                                      <div className="font-medium truncate">{event.title}</div>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" className="max-w-xs">
+                                    <div className="space-y-2">
+                                      <div>
+                                        <div className="font-semibold text-sm">{event.title}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {dayInfo.date && format(dayInfo.date, 'MMMM d, yyyy')}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <Badge variant="outline" className="text-xs">
+                                          {EVENT_TYPE_LABELS[event.type]}
+                                        </Badge>
+                                      </div>
+                                      {event.metadata && event.metadata.amount && (
+                                        <div className="text-sm font-semibold">
+                                          ${(event.metadata.amount / 1000000).toFixed(2)}M
+                                        </div>
+                                      )}
+                                      {event.deal && (
+                                        <div className="text-xs">
+                                          <span className="font-medium">Deal:</span> {event.deal.Name}
+                                        </div>
+                                      )}
+                                      {event.talentClient && (
+                                        <div className="text-xs">
+                                          <span className="font-medium">Client:</span> {event.talentClient.Name}
+                                        </div>
+                                      )}
+                                      {event.brand && (
+                                        <div className="text-xs">
+                                          <span className="font-medium">Brand:</span> {event.brand.name}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ))}
+                              {dayInfo.events.length > 3 && (
+                                <div className="text-[9px] text-center text-muted-foreground">
+                                  +{dayInfo.events.length - 3} more
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Resizable Divider - Only in detail view */}

@@ -20,7 +20,30 @@ export class AgentService {
 
   static async getAgent(id: string): Promise<Agent> {
     const response = await api.get(`/agents/${id}`)
-    return response.data
+    // API returns { success: true, data: {...} }
+    const agentData = response.data.data || response.data
+
+    // Transform the data structure to match our Agent type
+    // The API returns clients as TalentAgent[] (relationship objects with nested talentClient)
+    // We need to extract the talentClient and transform deals
+    if (agentData.clients && Array.isArray(agentData.clients)) {
+      agentData.clients = agentData.clients.map((tc: any) => {
+        const client = tc.talentClient
+
+        // Transform deals from DealClient[] to Deal[]
+        if (client.deals && Array.isArray(client.deals)) {
+          client.deals = client.deals.map((dc: any) => ({
+            ...dc.deal,
+            // Preserve the split percentage from the relationship
+            splitPercent: dc.splitPercent
+          }))
+        }
+
+        return client
+      })
+    }
+
+    return agentData
   }
 
   static async createAgent(agent: Partial<Agent>): Promise<Agent> {

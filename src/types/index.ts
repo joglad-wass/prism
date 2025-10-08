@@ -546,6 +546,7 @@ export interface DealFilters {
   stage?: string
   brand?: string
   agent?: string
+  ownerId?: string
   division?: string
   search?: string
   costCenter?: string

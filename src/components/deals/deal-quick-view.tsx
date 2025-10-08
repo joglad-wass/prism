@@ -54,10 +54,10 @@ interface DealQuickViewProps {
   deal: DealQuickViewData | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onViewDetails?: (dealId: string) => void
+  onViewProfile?: (dealId: string) => void
 }
 
-export function DealQuickView({ deal, open, onOpenChange, onViewDetails }: DealQuickViewProps) {
+export function DealQuickView({ deal, open, onOpenChange, onViewProfile }: DealQuickViewProps) {
   const { labels } = useLabels()
   if (!deal) return null
 
@@ -237,7 +237,7 @@ export function DealQuickView({ deal, open, onOpenChange, onViewDetails }: DealQ
               size="sm"
               className="w-full"
               onClick={() => {
-                onViewDetails?.(deal.id)
+                onViewProfile?.(deal.id)
                 onOpenChange(false)
               }}
             >

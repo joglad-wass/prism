@@ -50,6 +50,11 @@ import { useFilter } from '../../contexts/filter-context'
 import { useQueryClient } from '@tanstack/react-query'
 import { dealKeys } from '../../hooks/useDeals'
 import { scheduleKeys } from '../../hooks/useSchedules'
+import { ProductsViewSelector, ProductViewType } from './products-view-selector'
+import { GroupedTableView } from './product-table-views/grouped-table-view'
+import { FlatTableView } from './product-table-views/flat-table-view'
+import { MasterDetailView } from './product-table-views/master-detail-view'
+import { CompactRowsView } from './product-table-views/compact-rows-view'
 
 interface DealProductsProps {
   deal: Deal
@@ -60,6 +65,21 @@ interface DealProductsProps {
 
 export function DealProducts({ deal, highlightedScheduleId, highlightedProductId, onNavigateToPayment }: DealProductsProps) {
   const { labels } = useLabels()
+
+  // Initialize view from localStorage
+  const [view, setView] = useState<ProductViewType>(() => {
+    if (typeof window !== 'undefined') {
+      const savedView = localStorage.getItem('deal-products-view-preference')
+      return (savedView as ProductViewType) || 'modular'
+    }
+    return 'modular'
+  })
+
+  // Save view preference to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('deal-products-view-preference', view)
+  }, [view])
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -558,81 +578,83 @@ export function DealProducts({ deal, highlightedScheduleId, highlightedProductId
       {/* Products Table */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-4">
             <div>
               <CardTitle>Deal Products</CardTitle>
               <CardDescription>
                 Manage products and their associated schedules
               </CardDescription>
             </div>
+            <div className="flex items-center gap-2">
+              <ProductsViewSelector view={view} onViewChange={setView} />
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Product
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Add New Product</DialogTitle>
+                    <DialogDescription>
+                      Add a new product to this deal
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="productName">Product Name</Label>
+                      <Input
+                        id="productName"
+                        placeholder="Product name..."
+                        value={newProduct.Product_Name__c}
+                        onChange={(e) => setNewProduct({ ...newProduct, Product_Name__c: e.target.value })}
+                      />
+                    </div>
 
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Product
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Add New Product</DialogTitle>
-                  <DialogDescription>
-                    Add a new product to this deal
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="productName">Product Name</Label>
-                    <Input
-                      id="productName"
-                      placeholder="Product name..."
-                      value={newProduct.Product_Name__c}
-                      onChange={(e) => setNewProduct({ ...newProduct, Product_Name__c: e.target.value })}
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="productCode">Cost Center</Label>
+                      <Input
+                        id="productCode"
+                        placeholder="Cost center code..."
+                        value={newProduct.ProductCode}
+                        onChange={(e) => setNewProduct({ ...newProduct, ProductCode: e.target.value })}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="productCode">Cost Center</Label>
-                    <Input
-                      id="productCode"
-                      placeholder="Cost center code..."
-                      value={newProduct.ProductCode}
-                      onChange={(e) => setNewProduct({ ...newProduct, ProductCode: e.target.value })}
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="unitPrice">Unit Price</Label>
+                      <Input
+                        id="unitPrice"
+                        type="number"
+                        placeholder="0.00"
+                        value={newProduct.UnitPrice}
+                        onChange={(e) => setNewProduct({ ...newProduct, UnitPrice: e.target.value })}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="unitPrice">Unit Price</Label>
-                    <Input
-                      id="unitPrice"
-                      type="number"
-                      placeholder="0.00"
-                      value={newProduct.UnitPrice}
-                      onChange={(e) => setNewProduct({ ...newProduct, UnitPrice: e.target.value })}
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        placeholder="Product description..."
+                        value={newProduct.Description}
+                        onChange={(e) => setNewProduct({ ...newProduct, Description: e.target.value })}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      placeholder="Product description..."
-                      value={newProduct.Description}
-                      onChange={(e) => setNewProduct({ ...newProduct, Description: e.target.value })}
-                    />
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleCreateProduct}>
+                        Add Product
+                      </Button>
+                    </div>
                   </div>
-
-                  <div className="flex justify-end gap-2 pt-4">
-                    <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleCreateProduct}>
-                      Add Product
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -985,6 +1007,54 @@ export function DealProducts({ deal, highlightedScheduleId, highlightedProductId
               <Package className="h-12 w-12 mx-auto mb-3 opacity-20" />
               <p>No products added yet</p>
             </div>
+          ) : view === 'grouped' ? (
+            <GroupedTableView
+              products={products}
+              formatCurrency={formatCurrency}
+              formatDate={formatDate}
+              getPaymentStatus={getPaymentStatus}
+              calculateSplitPercentage={calculateSplitPercentage}
+              onEditSchedule={handleEditScheduleClick}
+              onEditProduct={handleEditClick}
+              onNavigateToPayment={onNavigateToPayment}
+              getNumericValue={getNumericValue}
+            />
+          ) : view === 'flat' ? (
+            <FlatTableView
+              products={products}
+              formatCurrency={formatCurrency}
+              formatDate={formatDate}
+              getPaymentStatus={getPaymentStatus}
+              calculateSplitPercentage={calculateSplitPercentage}
+              onEditSchedule={handleEditScheduleClick}
+              onEditProduct={handleEditClick}
+              onNavigateToPayment={onNavigateToPayment}
+              getNumericValue={getNumericValue}
+            />
+          ) : view === 'master-detail' ? (
+            <MasterDetailView
+              products={products}
+              formatCurrency={formatCurrency}
+              formatDate={formatDate}
+              getPaymentStatus={getPaymentStatus}
+              calculateSplitPercentage={calculateSplitPercentage}
+              onEditSchedule={handleEditScheduleClick}
+              onEditProduct={handleEditClick}
+              onNavigateToPayment={onNavigateToPayment}
+              getNumericValue={getNumericValue}
+            />
+          ) : view === 'compact' ? (
+            <CompactRowsView
+              products={products}
+              formatCurrency={formatCurrency}
+              formatDate={formatDate}
+              getPaymentStatus={getPaymentStatus}
+              calculateSplitPercentage={calculateSplitPercentage}
+              onEditSchedule={handleEditScheduleClick}
+              onEditProduct={handleEditClick}
+              onNavigateToPayment={onNavigateToPayment}
+              getNumericValue={getNumericValue}
+            />
           ) : (
             <div className="grid gap-6 lg:grid-cols-3">
               {/* Left: Products List */}

@@ -30,6 +30,8 @@ import { DealListPanel } from './deal-list-panel'
 import { DealDetailsPanel } from './deal-details-panel'
 import { BrandListPanel } from './brand-list-panel'
 import { BrandDetailsPanel } from './brand-details-panel'
+import { TalentDealsTableView } from './talent-deals-table-view'
+import { ViewToggle } from './view-toggle'
 import { useLabels } from '../../hooks/useLabels'
 
 interface TalentDealsProps {
@@ -47,6 +49,20 @@ export function TalentDeals({ talent }: TalentDealsProps) {
   const [expandedDeals, setExpandedDeals] = useState<Set<string>>(new Set())
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null)
+
+  // Initialize view from localStorage
+  const [view, setView] = useState<'modular' | 'table'>(() => {
+    if (typeof window !== 'undefined') {
+      const savedView = localStorage.getItem('talent-deals-view-preference')
+      return (savedView === 'table' ? 'table' : 'modular') as 'modular' | 'table'
+    }
+    return 'modular'
+  })
+
+  // Save view preference to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('talent-deals-view-preference', view)
+  }, [view])
 
   // Update split percentage when talent data changes
   useEffect(() => {
@@ -395,17 +411,45 @@ export function TalentDeals({ talent }: TalentDealsProps) {
 
       {/* Deals Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="all">All {labels.deals}</TabsTrigger>
-          <TabsTrigger value="progress">In Progress</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="brands">By Brand</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="all">All {labels.deals}</TabsTrigger>
+            <TabsTrigger value="progress">In Progress</TabsTrigger>
+            <TabsTrigger value="completed">Completed</TabsTrigger>
+            {/* <TabsTrigger value="brands">By Brand</TabsTrigger> */}
+          </TabsList>
+          <ViewToggle view={view} onViewChange={setView} />
+        </div>
 
         <TabsContent value="all">
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Left: Deals List */}
-            <Card className="lg:col-span-1">
+          {view === 'table' ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Briefcase className="h-5 w-5" />
+                  All {labels.deals} ({deals.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {deals.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                    <p>No {labels.deals.toLowerCase()} found</p>
+                  </div>
+                ) : (
+                  <TalentDealsTableView
+                    deals={deals}
+                    formatCurrency={formatCurrency}
+                    formatDate={formatDate}
+                    getStatusVariant={getStatusVariant}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-3">
+              {/* Left: Deals List */}
+              <Card className="lg:col-span-1">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Briefcase className="h-5 w-5" />
@@ -801,12 +845,38 @@ export function TalentDeals({ talent }: TalentDealsProps) {
               </CardContent>
             </Card>
           </div>
+          )}
         </TabsContent>
 
         <TabsContent value="progress">
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Left: Deals List */}
-            <Card className="lg:col-span-1">
+          {view === 'table' ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Briefcase className="h-5 w-5" />
+                  In Progress ({inProgressDeals.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {inProgressDeals.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                    <p>No {labels.deals.toLowerCase()} in progress</p>
+                  </div>
+                ) : (
+                  <TalentDealsTableView
+                    deals={inProgressDeals}
+                    formatCurrency={formatCurrency}
+                    formatDate={formatDate}
+                    getStatusVariant={getStatusVariant}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-3">
+              {/* Left: Deals List */}
+              <Card className="lg:col-span-1">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Briefcase className="h-5 w-5" />
@@ -1190,11 +1260,37 @@ export function TalentDeals({ talent }: TalentDealsProps) {
               </CardContent>
             </Card>
           </div>
+          )}
         </TabsContent>
 
         <TabsContent value="completed">
-          <div className="grid gap-6 lg:grid-cols-3">
-            <DealListPanel
+          {view === 'table' ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Briefcase className="h-5 w-5" />
+                  Completed ({completedDeals.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {completedDeals.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                    <p>No completed {labels.deals.toLowerCase()}</p>
+                  </div>
+                ) : (
+                  <TalentDealsTableView
+                    deals={completedDeals}
+                    formatCurrency={formatCurrency}
+                    formatDate={formatDate}
+                    getStatusVariant={getStatusVariant}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-3">
+              <DealListPanel
               deals={completedDeals}
               title={`Completed (${completedDeals.length})`}
               selectedDeal={selectedDealForView}
@@ -1219,6 +1315,7 @@ export function TalentDeals({ talent }: TalentDealsProps) {
               formatDate={formatDate}
             />
           </div>
+          )}
         </TabsContent>
 
         <TabsContent value="brands">
