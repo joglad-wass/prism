@@ -13,9 +13,9 @@ import { BrandDeals } from '../../../components/brand/brand-deals'
 import { BrandNotes } from '../../../components/brand/brand-notes'
 import { BrandSummaryBadges } from '../../../components/brand/brand-summary-badges'
 import { BrandProfessionalDetails } from '../../../components/brand/brand-professional-details'
+import Image from 'next/image'
 import {
   ArrowLeft,
-  ExternalLink,
   Loader2,
 } from 'lucide-react'
 import { BrandService } from '../../../services/brands'
@@ -151,22 +151,22 @@ export default function BrandDetailPage({ params }: BrandDetailPageProps) {
           <div className="flex items-center gap-2">
             {brand.salesforceId && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => handleExternalLink('salesforce')}
+                className="h-9 px-3 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"
               >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Salesforce
+                <Image src="/salesforce.png" alt="Salesforce" width={20} height={20} className="opacity-80 hover:opacity-100 transition-opacity" />
               </Button>
             )}
             {brand.workdayId && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => handleExternalLink('workday')}
+                className="h-9 px-3 hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
               >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Workday
+                <Image src="/workday.png" alt="Workday" width={20} height={20} className="opacity-80 hover:opacity-100 transition-opacity" />
               </Button>
             )}
           </div>

@@ -138,22 +138,22 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
             <div className="flex items-center gap-2">
               {(talent.Id || talent.salesforceId) && (
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={() => handleExternalLink('salesforce')}
+                  className="h-9 px-3 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"
                 >
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Salesforce
+                  <Image src="/salesforce.png" alt="Salesforce" width={20} height={20} className="opacity-80 hover:opacity-100 transition-opacity" />
                 </Button>
               )}
               {(talent.Workday_ID__c || talent.workdayId) && (
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={() => handleExternalLink('workday')}
+                  className="h-9 px-3 hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
                 >
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Workday
+                  <Image src="/workday.png" alt="Workday" width={20} height={20} className="opacity-80 hover:opacity-100 transition-opacity" />
                 </Button>
               )}
             </div>
