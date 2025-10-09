@@ -13,14 +13,17 @@ import { BrandDeals } from '../../../components/brand/brand-deals'
 import { BrandNotes } from '../../../components/brand/brand-notes'
 import { BrandSummaryBadges } from '../../../components/brand/brand-summary-badges'
 import { BrandProfessionalDetails } from '../../../components/brand/brand-professional-details'
+import { DeleteBrandDialog } from '../../../components/brand/delete-brand-dialog'
 import Image from 'next/image'
 import {
   ArrowLeft,
   Loader2,
+  Trash2,
 } from 'lucide-react'
 import { BrandService } from '../../../services/brands'
 import { Brand } from '../../../types'
 import { useLabels } from '../../../hooks/useLabels'
+import { useUser } from '../../../contexts/user-context'
 
 interface BrandDetailPageProps {
   params: Promise<{
@@ -30,12 +33,16 @@ interface BrandDetailPageProps {
 
 export default function BrandDetailPage({ params }: BrandDetailPageProps) {
   const { labels } = useLabels()
+  const { user } = useUser()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('calendar')
   const [brand, setBrand] = useState<Brand | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const { id } = use(params)
+
+  const isAdmin = user?.userType === 'ADMINISTRATOR'
 
   useEffect(() => {
     const fetchBrand = async () => {
@@ -149,6 +156,16 @@ export default function BrandDetailPage({ params }: BrandDetailPageProps) {
             Back
           </Button>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDeleteDialogOpen(true)}
+                className="h-9 px-3 hover:bg-destructive/10 text-destructive hover:text-destructive transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
             {brand.salesforceId && (
               <Button
                 variant="ghost"
@@ -237,6 +254,14 @@ export default function BrandDetailPage({ params }: BrandDetailPageProps) {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Delete Brand Dialog */}
+      <DeleteBrandDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        brandId={brand.id}
+        brandName={brand.name}
+      />
     </AppLayout>
   )
 }

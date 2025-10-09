@@ -199,6 +199,7 @@ export interface Agent {
   email: string
   phone?: string
   title?: string
+  status?: 'ACTIVE' | 'INACTIVE'
 
   // Organization
   company?: string
@@ -293,10 +294,12 @@ export interface Deal {
   products?: Product[]
   schedules?: Schedule[]
   notes?: DealNote[]
+  attachments?: Attachment[]
   _count?: {
     schedules: number
     notes: number
     products?: number
+    attachments?: number
   }
 }
 
@@ -766,4 +769,17 @@ export interface DivisionLabelMapping {
   division: string
   labelKey: string
   labelValue: string
+}
+
+export interface Attachment {
+  id: string
+  createdAt: string
+  updatedAt: string
+  fileName: string
+  fileType: string
+  fileSize: number
+  description?: string
+  uploadedById?: string
+  uploadedBy?: { name: string; email: string }
+  dealId?: string
 }

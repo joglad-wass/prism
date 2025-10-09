@@ -45,8 +45,6 @@ interface TalentQuickViewProps {
 }
 
 export function TalentQuickView({ talent, open, onOpenChange, onViewProfile }: TalentQuickViewProps) {
-  if (!talent) return null
-
   const { labels } = useLabels()
   const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -54,6 +52,8 @@ export function TalentQuickView({ talent, open, onOpenChange, onViewProfile }: T
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  if (!talent) return null
 
   const isDark = mounted && (theme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches))
 

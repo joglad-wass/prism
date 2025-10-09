@@ -2,18 +2,25 @@
 
 import { useState, use, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '../../../components/layout/app-layout'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Separator } from '../../../components/ui/separator'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
+import { Input } from '../../../components/ui/input'
+import { Label } from '../../../components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { DealOverview } from '../../../components/deals/deal-overview'
 import { DealTimeline } from '../../../components/deals/deal-timeline'
 import { DealProducts } from '../../../components/deals/deal-products'
 import { DealSchedules } from '../../../components/deals/deal-schedules'
 import { DealNotes } from '../../../components/deals/deal-notes'
 import { DealPayments } from '../../../components/deals/deal-payments'
+import { DealAttachments } from '../../../components/deals/deal-attachments'
+import { DealExportDialog } from '../../../components/deals/deal-export-dialog'
 import Image from 'next/image'
 import {
   ArrowLeft,
@@ -29,11 +36,15 @@ import {
   Calculator,
   Percent,
   ArrowUpRight,
+  Trash2,
+  Pencil,
+  Share2,
 } from 'lucide-react'
-import { useDeal } from '../../../hooks/useDeals'
+import { useDeal, dealKeys } from '../../../hooks/useDeals'
 import { useSchedulesByDeal } from '../../../hooks/useSchedules'
 import { Deal } from '../../../types'
 import { useLabels } from '../../../hooks/useLabels'
+import { useUser } from '../../../contexts/user-context'
 
 interface DealDetailPageProps {
   params: Promise<{
@@ -43,24 +54,54 @@ interface DealDetailPageProps {
 
 export default function DealDetailPage({ params }: DealDetailPageProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { labels } = useLabels()
+  const { user } = useUser()
   const [activeTab, setActiveTab] = useState('overview')
   const [highlightedScheduleId, setHighlightedScheduleId] = useState<string | undefined>(undefined)
   const [highlightedPaymentId, setHighlightedPaymentId] = useState<string | undefined>(undefined)
   const [highlightedProductId, setHighlightedProductId] = useState<string | undefined>(undefined)
+  const [isDeleting, setIsDeleting] = useState(false)
   const { id } = use(params)
 
   const { data: deal, isLoading, error } = useDeal(id)
   const { data: schedulesResponse } = useSchedulesByDeal(id)
 
+  // Edit dialog states
+  const [isEditingDealInfo, setIsEditingDealInfo] = useState(false)
+  const [isEditingOwnerInfo, setIsEditingOwnerInfo] = useState(false)
+  const [isEditingContractInfo, setIsEditingContractInfo] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Export dialog state
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+
+  // Form states for Deal Information
+  const [editStage, setEditStage] = useState('')
+  const [editIndustry, setEditIndustry] = useState('')
+  const [editStartDate, setEditStartDate] = useState('')
+  const [editCloseDate, setEditCloseDate] = useState('')
+
+  // Form states for Owner Information
+  const [editOwner, setEditOwner] = useState('')
+  const [editCostCenter, setEditCostCenter] = useState('')
+  const [editCompanyReference, setEditCompanyReference] = useState('')
+
+  // Form states for Contract Management
+  const [editClmContractNumber, setEditClmContractNumber] = useState('')
+
   const getStageVariant = (stage: string) => {
     switch (stage) {
+      case 'Closed Won':
       case 'CLOSED_WON':
         return 'default'
+      case 'Closed Lost':
       case 'CLOSED_LOST':
         return 'destructive'
+      case 'Negotiation':
       case 'NEGOTIATION':
         return 'secondary'
+      case 'Proposal':
       case 'PROPOSAL':
         return 'outline'
       default:
@@ -114,6 +155,203 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
         window.open(`https://wd5.myworkday.com/teamwass/d/inst/1$1732/${deal?.Workday_Project_WID__c}.htmld`, '_blank')
       }
       console.log(`Opening ${type} with ID: ${dealId}`)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deal) return
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${deal.Name}"?\n\nThis action cannot be undone and will permanently delete the ${labels.deal.toLowerCase()}, along with all associated products, schedules, notes, and attachments.`
+    )
+
+    if (!confirmed) return
+
+    setIsDeleting(true)
+    try {
+      const API_BASE_URL =
+        process.env.NEXT_PUBLIC_API_URL ||
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        'http://localhost:3001'
+
+      const response = await fetch(`${API_BASE_URL}/api/deals/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete deal')
+      }
+
+      // Redirect to deals list
+      router.push('/deals')
+    } catch (error) {
+      console.error('Error deleting deal:', error)
+      alert(`Failed to delete ${labels.deal.toLowerCase()}. Please try again.`)
+      setIsDeleting(false)
+    }
+  }
+
+  const formatDateForInput = (dateString?: string) => {
+    if (!dateString) return ''
+    try {
+      const date = new Date(dateString)
+      return date.toISOString().split('T')[0]
+    } catch {
+      return ''
+    }
+  }
+
+  const handleEditDealInfo = () => {
+    if (!deal) return
+
+    // Use current stage value or default to Initial Outreach
+    let stageValue = deal.StageName || 'Initial Outreach'
+    const validStages = ['Initial Outreach', 'Negotiation', 'Terms Agreed Upon', 'Closed Won']
+
+    // If the current stage is not in the valid list, default to Initial Outreach
+    if (!validStages.includes(stageValue)) {
+      console.warn(`Stage "${stageValue}" is not valid. Defaulting to Initial Outreach`)
+      stageValue = 'Initial Outreach'
+    }
+
+    setEditStage(stageValue)
+    setEditIndustry(deal.Account_Industry__c || '')
+    setEditStartDate(formatDateForInput(deal.Contract_Start_Date__c))
+    setEditCloseDate(formatDateForInput(deal.Contract_End_Date__c))
+    setIsEditingDealInfo(true)
+  }
+
+  const handleEditOwnerInfo = () => {
+    if (!deal) return
+    setEditOwner(deal.owner?.name || '')
+    setEditCostCenter(deal.Owner_Workday_Cost_Center__c || '')
+    setEditCompanyReference(deal.CompanyReference__c || '')
+    setIsEditingOwnerInfo(true)
+  }
+
+  const handleEditContractInfo = () => {
+    if (!deal) return
+    setEditClmContractNumber(deal.clmContractNumber || '')
+    setIsEditingContractInfo(true)
+  }
+
+  const handleSaveDealInfo = async () => {
+    if (!deal) return
+
+    setIsSaving(true)
+    try {
+      const API_BASE_URL =
+        process.env.NEXT_PUBLIC_API_URL ||
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        'http://localhost:3001'
+
+      // Convert date strings to ISO DateTime format if they exist
+      const formatDateTimeForAPI = (dateString: string) => {
+        if (!dateString) return undefined
+        try {
+          const date = new Date(dateString)
+          return date.toISOString()
+        } catch {
+          return undefined
+        }
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/deals/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          StageName: editStage || undefined,
+          Account_Industry__c: editIndustry || undefined,
+          Contract_Start_Date__c: formatDateTimeForAPI(editStartDate),
+          Contract_End_Date__c: formatDateTimeForAPI(editCloseDate),
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update deal')
+      }
+
+      // Refresh deal data
+      await queryClient.invalidateQueries({ queryKey: dealKeys.detail(id) })
+      setIsEditingDealInfo(false)
+    } catch (error) {
+      console.error('Error updating deal:', error)
+      alert('Failed to update deal information. Please try again.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSaveOwnerInfo = async () => {
+    if (!deal) return
+
+    setIsSaving(true)
+    try {
+      const API_BASE_URL =
+        process.env.NEXT_PUBLIC_API_URL ||
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        'http://localhost:3001'
+
+      const response = await fetch(`${API_BASE_URL}/api/deals/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          Owner_Workday_Cost_Center__c: editCostCenter,
+          CompanyReference__c: editCompanyReference,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update deal')
+      }
+
+      // Refresh deal data
+      await queryClient.invalidateQueries({ queryKey: dealKeys.detail(id) })
+      setIsEditingOwnerInfo(false)
+    } catch (error) {
+      console.error('Error updating deal:', error)
+      alert('Failed to update owner information. Please try again.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSaveContractInfo = async () => {
+    if (!deal) return
+
+    setIsSaving(true)
+    try {
+      const API_BASE_URL =
+        process.env.NEXT_PUBLIC_API_URL ||
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        'http://localhost:3001'
+
+      const response = await fetch(`${API_BASE_URL}/api/deals/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clmContractNumber: editClmContractNumber,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update deal')
+      }
+
+      // Refresh deal data
+      await queryClient.invalidateQueries({ queryKey: dealKeys.detail(id) })
+      setIsEditingContractInfo(false)
+    } catch (error) {
+      console.error('Error updating deal:', error)
+      alert('Failed to update contract information. Please try again.')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -188,6 +426,14 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
             Back
           </Button>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExportDialogOpen(true)}
+              className="h-9 px-3 hover:bg-accent transition-colors"
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
             {deal.salesforceId && (
               <Button
                 variant="ghost"
@@ -206,6 +452,21 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
                 className="h-9 px-3 hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
               >
                 <Image src="/workday.png" alt="Workday" width={20} height={20} className="opacity-80 hover:opacity-100 transition-opacity" />
+              </Button>
+            )}
+            {user?.userType === 'ADMINISTRATOR' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="h-9 px-3 hover:bg-red-50 dark:hover:bg-red-950 transition-colors text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+              >
+                {isDeleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
               </Button>
             )}
           </div>
@@ -233,10 +494,20 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
           {/* Deal Details */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                {labels.deal} Information
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  {labels.deal} Information
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleEditDealInfo}
+                  className="h-8 w-8 p-0"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
@@ -247,7 +518,7 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
 
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Stage</span>
-                  <Badge variant="secondary">{deal.StageName}</Badge>
+                  <Badge variant="secondary">{deal.StageName || 'N/A'}</Badge>
                 </div>
 
                 {deal.division && (
@@ -345,10 +616,20 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Owner Information
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Owner Information
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEditOwnerInfo}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
@@ -389,17 +670,26 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
 
             {/* CLM Details */}
             <Card>
-              <CardHeader className="flex items-center gap-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Signature className="h-5 w-5" />
-                  Contract Management
-                </CardTitle>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Signature className="h-5 w-5" />
+                    Contract Management
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEditContractInfo}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                  
                   <span className="text-sm font-medium">CLM Contract Number</span>
-                  <span className="text-sm text-muted-foreground">--</span>
+                  <span className="text-sm text-muted-foreground">{deal.clmContractNumber || '--'}</span>
                 </div>
               </CardContent>
             </Card>
@@ -526,6 +816,7 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
             {/* <TabsTrigger value="schedules">Schedules</TabsTrigger> */}
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
+            <TabsTrigger value="attachments">Attachments</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -609,8 +900,198 @@ export default function DealDetailPage({ params }: DealDetailPageProps) {
           <TabsContent value="notes">
             <DealNotes deal={deal} />
           </TabsContent>
+
+          <TabsContent value="attachments">
+            <DealAttachments deal={deal} />
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* Edit Deal Information Dialog */}
+      <Dialog open={isEditingDealInfo} onOpenChange={setIsEditingDealInfo}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit {labels.deal} Information</DialogTitle>
+            <DialogDescription>
+              Update the {labels.deal.toLowerCase()} details below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-stage">Stage</Label>
+              <Select value={editStage} onValueChange={setEditStage}>
+                <SelectTrigger id="edit-stage">
+                  <SelectValue placeholder="Select stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Initial Outreach">Initial Outreach</SelectItem>
+                  <SelectItem value="Negotiation">Negotiation</SelectItem>
+                  <SelectItem value="Terms Agreed Upon">Terms Agreed Upon</SelectItem>
+                  <SelectItem value="Closed Won">Closed Won</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-industry">Industry</Label>
+              <Input
+                id="edit-industry"
+                value={editIndustry}
+                onChange={(e) => setEditIndustry(e.target.value)}
+                placeholder="Enter industry"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-start-date">Start Date</Label>
+              <Input
+                id="edit-start-date"
+                type="date"
+                value={editStartDate}
+                onChange={(e) => setEditStartDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-close-date">Close Date</Label>
+              <Input
+                id="edit-close-date"
+                type="date"
+                value={editCloseDate}
+                onChange={(e) => setEditCloseDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditingDealInfo(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveDealInfo} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Owner Information Dialog */}
+      <Dialog open={isEditingOwnerInfo} onOpenChange={setIsEditingOwnerInfo}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Owner Information</DialogTitle>
+            <DialogDescription>
+              Update the owner details below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-owner">Owner</Label>
+              <Input
+                id="edit-owner"
+                value={editOwner}
+                disabled
+                placeholder="Owner (read-only)"
+              />
+              <p className="text-xs text-muted-foreground">
+                Owner assignment cannot be changed here
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-cost-center">Cost Center</Label>
+              <Input
+                id="edit-cost-center"
+                value={editCostCenter}
+                onChange={(e) => setEditCostCenter(e.target.value)}
+                placeholder="Enter cost center"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-company-reference">Company Reference</Label>
+              <Input
+                id="edit-company-reference"
+                value={editCompanyReference}
+                onChange={(e) => setEditCompanyReference(e.target.value)}
+                placeholder="Enter company reference"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditingOwnerInfo(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveOwnerInfo} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Contract Management Dialog */}
+      <Dialog open={isEditingContractInfo} onOpenChange={setIsEditingContractInfo}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Contract Management</DialogTitle>
+            <DialogDescription>
+              Update the contract details below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-clm-contract-number">CLM Contract Number</Label>
+              <Input
+                id="edit-clm-contract-number"
+                value={editClmContractNumber}
+                onChange={(e) => setEditClmContractNumber(e.target.value)}
+                placeholder="Enter CLM contract number"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditingContractInfo(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveContractInfo} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Export Dialog */}
+      <DealExportDialog
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+        deal={deal}
+      />
     </AppLayout>
   )
 }

@@ -36,6 +36,11 @@ export class BrandService {
     await api.delete(`/brands/${id}`)
   }
 
+  static async getBrandAssociations(id: string): Promise<{ hasDeals: boolean; dealCount: number }> {
+    const response = await api.get(`/brands/${id}/associations`)
+    return response.data.data
+  }
+
   // Get brand industries (for filtering)
   static async getIndustries(): Promise<string[]> {
     const response = await api.get('/brands/industries')

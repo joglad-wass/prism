@@ -14,14 +14,17 @@ import { AgentBrands } from '../../../components/agent/agent-brands'
 import { AgentNotes } from '../../../components/agent/agent-notes'
 import { AgentSummaryBadges } from '../../../components/agent/agent-summary-badges'
 import { AgentProfessionalDetails } from '../../../components/agent/agent-professional-details'
+import { DeleteAgentDialog } from '../../../components/agent/delete-agent-dialog'
 import {
   ArrowLeft,
   ExternalLink,
   Loader2,
+  Trash2,
 } from 'lucide-react'
 import { AgentService } from '../../../services/agents'
 import { Agent } from '../../../types'
 import { useLabels } from '../../../hooks/useLabels'
+import { useUser } from '../../../contexts/user-context'
 
 interface AgentDetailPageProps {
   params: Promise<{
@@ -31,12 +34,16 @@ interface AgentDetailPageProps {
 
 export default function AgentDetailPage({ params }: AgentDetailPageProps) {
   const { labels } = useLabels()
+  const { user } = useUser()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('calendar')
   const [agent, setAgent] = useState<Agent | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const { id } = use(params)
+
+  const isAdmin = user?.userType === 'ADMINISTRATOR'
 
   useEffect(() => {
     const fetchAgent = async () => {
@@ -124,6 +131,16 @@ export default function AgentDetailPage({ params }: AgentDetailPageProps) {
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteDialogOpen(true)}
+              className="h-9 px-3 hover:bg-destructive/10 text-destructive hover:text-destructive transition-colors"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         {/* Agent Info Header - Side by Side Layout */}
@@ -191,6 +208,14 @@ export default function AgentDetailPage({ params }: AgentDetailPageProps) {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Delete Agent Dialog */}
+      <DeleteAgentDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        agentId={agent.id}
+        agentName={agent.name}
+      />
     </AppLayout>
   )
 }

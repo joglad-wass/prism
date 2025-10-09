@@ -16,6 +16,7 @@ import {
   Briefcase,
   Home,
   BarChart3,
+  BotMessageSquare,
   ArrowRightFromLine,
   ArrowLeftFromLine
 } from 'lucide-react'
@@ -65,6 +66,11 @@ export function Sidebar() {
       name: 'Analytics',
       href: '/analytics',
       icon: BarChart3,
+    },
+    {
+      name: 'AI Insights',
+      href: '/ai',
+      icon: BotMessageSquare,
     },
   ]
 

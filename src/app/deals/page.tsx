@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { AppLayout } from '../../components/layout/app-layout'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -33,6 +34,7 @@ import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
 import { useAgentStats } from '../../hooks/useAgentStats'
 
 export default function DealsPage() {
+  const router = useRouter()
   const { labels } = useLabels()
   const { user } = useUser()
   const { filterSelection } = useFilter()
@@ -260,7 +262,7 @@ export default function DealsPage() {
               Track your {labels.deal.toLowerCase()} pipeline and manage client contracts
             </p>
           </div>
-          <Button>
+          <Button onClick={() => router.push('/deals/new')}>
             <Plus className="mr-2 h-4 w-4" />
             New {labels.deal}
           </Button>

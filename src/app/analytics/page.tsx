@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { AppLayout } from '../../components/layout/app-layout'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
@@ -10,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs'
 import { useTalents } from '../../hooks/useTalents'
 import { useBrands } from '../../hooks/useBrands'
 import { useAgents } from '../../hooks/useAgents'
@@ -19,19 +21,22 @@ import { useLabels } from '../../hooks/useLabels'
 import {
   BarChart3,
   TrendingUp,
-  Users,
-  Building2,
   DollarSign,
   Briefcase,
-  Award,
   Target,
-  Calendar,
-  Download
+  Download,
+  Lightbulb,
+  Network
 } from 'lucide-react'
+import { InsightCards } from '../../components/analytics/insight-cards'
+import { NetworkGraph } from '../../components/analytics/network-graph'
+import { VisualQueryBuilder } from '../../components/analytics/visual-query-builder'
+import { exportToCSV, flattenForExport } from '../../utils/export'
 
 export default function AnalyticsPage() {
   const { labels } = useLabels()
   const { filterSelection } = useFilter()
+  const [activeTab, setActiveTab] = useState('insights')
 
   const filterParams = {
     ...(filterSelection.type === 'individual' && { costCenter: filterSelection.value || undefined }),
@@ -49,74 +54,13 @@ export default function AnalyticsPage() {
   const agents = agentsResponse?.data || []
   const deals = dealsResponse?.data || []
 
-  // Talent Analytics
-  const talentsByCategory = talents.reduce((acc, talent) => {
-    const category = talent.category || 'Uncategorized'
-    acc[category] = (acc[category] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
+  const totalDealValue = deals.reduce((acc, deal) => acc + (deal.Amount || 0), 0)
+  const avgDealSize = deals.length > 0 ? totalDealValue / deals.length : 0
 
-  const activeVsInactive = {
-    active: talents.filter(t => t.status?.toLowerCase().includes('active')).length,
-    inactive: talents.filter(t => t.status?.toLowerCase().includes('inactive')).length,
-    retired: talents.filter(t => t.status?.toLowerCase().includes('retired')).length,
-  }
-
-  const nilVsNonNil = {
-    nil: talents.filter(t => t.isNil).length,
-    nonNil: talents.filter(t => !t.isNil).length,
-  }
-
-
-  // Brand Analytics
-  const brandsByStatus = {
-    active: brands.filter(b => b.status === 'ACTIVE').length,
-    inactive: brands.filter(b => b.status === 'INACTIVE').length,
-    prospect: brands.filter(b => b.status === 'PROSPECT').length,
-  }
-
-  const brandsByType = {
-    brand: brands.filter(b => b.type === 'BRAND').length,
-    agency: brands.filter(b => b.type === 'AGENCY').length,
-  }
-
-  // Deal Analytics
   const dealsByStage = deals.reduce((acc, deal) => {
     acc[deal.StageName] = (acc[deal.StageName] || 0) + 1
     return acc
   }, {} as Record<string, number>)
-
-  const dealsByStatus = deals.reduce((acc, deal) => {
-    acc[deal.Status__c] = (acc[deal.Status__c] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
-
-  const totalDealValue = deals.reduce((acc, deal) => acc + (deal.Amount || 0), 0)
-  const avgDealSize = deals.length > 0 ? totalDealValue / deals.length : 0
-
-  // Agent Performance
-  const agentPerformance = agents.map(agent => {
-    const clientCount = agent.clients?.length || 0
-    const dealCount = agent.deals?.length || 0
-    const brandCount = agent.ownedBrands?.length || 0
-    const totalDealRevenue = agent.deals?.reduce((sum, deal) => {
-      const amount = Number(deal.Amount || deal.Contract_Amount__c || 0)
-      return sum + amount
-    }, 0) || 0
-
-
-    return {
-      ...agent,
-      clientCount,
-      dealCount,
-      brandCount,
-      totalDealRevenue
-    }
-  })
-  // No need to filter since hasDeals=true already filters on the backend
-  .sort((a, b) => b.totalDealRevenue - a.totalDealRevenue)
-
-  const topPerformingAgents = agentPerformance.slice(0, 5)
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -130,6 +74,46 @@ export default function AnalyticsPage() {
     return total > 0 ? ((value / total) * 100).toFixed(1) : '0'
   }
 
+  const handleExport = () => {
+    const exportData = {
+      overview: {
+        totalRevenue: totalDealValue,
+        avgDealSize,
+        totalDeals: deals.length,
+        totalClients: talents.length,
+        totalBrands: brands.length,
+        totalAgents: agents.length
+      },
+      dealsByStage,
+      timestamp: new Date().toISOString()
+    }
+
+    // Export summary as JSON
+    const jsonContent = JSON.stringify(exportData, null, 2)
+    const blob = new Blob([jsonContent], { type: 'application/json' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `analytics-report-${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    // Also export deals as CSV
+    if (deals.length > 0) {
+      const dealsForExport = flattenForExport(deals.map(d => ({
+        name: d.Name,
+        stage: d.StageName,
+        status: d.Status__c,
+        amount: d.Amount,
+        brand: d.brand?.name || '',
+        division: d.division
+      })))
+      exportToCSV(dealsForExport, `deals-${new Date().toISOString().split('T')[0]}`)
+    }
+  }
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -138,10 +122,15 @@ export default function AnalyticsPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
             <p className="text-muted-foreground">
-              Comprehensive insights into your talent management data
+              Advanced insights and relationship analysis
             </p>
+            {filterSelection.value && (
+              <Badge variant="secondary" className="mt-2">
+                Filtered by: {filterSelection.value}
+              </Badge>
+            )}
           </div>
-          <Button>
+          <Button onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
             Export Report
           </Button>
@@ -206,194 +195,36 @@ export default function AnalyticsPage() {
           </Card>
         </div>
 
-        {/* Charts Row 1 */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Talent Categories */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Talent by Category</CardTitle>
-              <CardDescription>Distribution of talent across categories</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {Object.entries(talentsByCategory)
-                .sort(([,a], [,b]) => b - a)
-                .slice(0, 8)
-                .map(([category, count]) => (
-                  <div key={category} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="h-3 w-3 bg-blue-500 rounded-full" />
-                      <span className="text-sm font-medium">{category}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-muted-foreground">
-                        {getPercentage(count, talents.length)}%
-                      </span>
-                      <Badge variant="outline">{count}</Badge>
-                    </div>
-                  </div>
-                ))}
-            </CardContent>
-          </Card>
+        {/* Tabs for different analytics views */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="insights" className="flex items-center gap-2">
+              <Lightbulb className="h-4 w-4" />
+              Insights & Query
+            </TabsTrigger>
+            <TabsTrigger value="network" className="flex items-center gap-2">
+              <Network className="h-4 w-4" />
+              Network Graph
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Deal Pipeline */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{labels.deal} Pipeline</CardTitle>
-              <CardDescription>{labels.deals} by stage breakdown</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {Object.entries(dealsByStage)
-                .sort(([,a], [,b]) => b - a)
-                .map(([stage, count]) => (
-                  <div key={stage} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className={`h-3 w-3 rounded-full ${
-                        stage === 'CLOSED_WON' ? 'bg-green-500' :
-                        stage === 'CLOSED_LOST' ? 'bg-red-500' :
-                        stage === 'NEGOTIATION' ? 'bg-orange-500' :
-                        'bg-blue-500'
-                      }`} />
-                      <span className="text-sm font-medium">{stage.replace('_', ' ')}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-muted-foreground">
-                        {getPercentage(count, deals.length)}%
-                      </span>
-                      <Badge variant="outline">{count}</Badge>
-                    </div>
-                  </div>
-                ))}
-            </CardContent>
-          </Card>
-        </div>
+          {/* Insights Tab */}
+          <TabsContent value="insights" className="space-y-6">
+            {/* Visual Query Builder */}
+            <VisualQueryBuilder />
 
-        {/* Charts Row 2 */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Talent Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Talent Status</CardTitle>
-              <CardDescription>Active vs inactive talents</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="h-3 w-3 bg-green-500 rounded-full" />
-                  <span className="text-sm font-medium">Active</span>
-                </div>
-                <Badge variant="default">{activeVsInactive.active}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="h-3 w-3 bg-yellow-500 rounded-full" />
-                  <span className="text-sm font-medium">Inactive</span>
-                </div>
-                <Badge variant="secondary">{activeVsInactive.inactive}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="h-3 w-3 bg-gray-500 rounded-full" />
-                  <span className="text-sm font-medium">Retired</span>
-                </div>
-                <Badge variant="outline">{activeVsInactive.retired}</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* NIL Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle>NIL Status</CardTitle>
-              <CardDescription>NIL eligible athletes</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="h-3 w-3 bg-purple-500 rounded-full" />
-                  <span className="text-sm font-medium">NIL Eligible</span>
-                </div>
-                <Badge variant="default">{nilVsNonNil.nil}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="h-3 w-3 bg-gray-500 rounded-full" />
-                  <span className="text-sm font-medium">Non-NIL</span>
-                </div>
-                <Badge variant="outline">{nilVsNonNil.nonNil}</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Brand Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Brand Status</CardTitle>
-              <CardDescription>Brand partnership status</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="h-3 w-3 bg-green-500 rounded-full" />
-                  <span className="text-sm font-medium">Active</span>
-                </div>
-                <Badge variant="default">{brandsByStatus.active}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="h-3 w-3 bg-orange-500 rounded-full" />
-                  <span className="text-sm font-medium">Prospect</span>
-                </div>
-                <Badge variant="outline">{brandsByStatus.prospect}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="h-3 w-3 bg-gray-500 rounded-full" />
-                  <span className="text-sm font-medium">Inactive</span>
-                </div>
-                <Badge variant="secondary">{brandsByStatus.inactive}</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Top Performing Agents */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Performing {labels.agents}</CardTitle>
-            <CardDescription>{labels.agents} ranked by {labels.deal.toLowerCase()} revenue (only {labels.agents.toLowerCase()} with {labels.deals.toLowerCase()})</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {topPerformingAgents.map((agent, index) => (
-                <div key={agent.id} className="flex items-center justify-between p-3 rounded-lg border">
-                  <div className="flex items-center space-x-3">
-                    <Badge variant={index === 0 ? "default" : "outline"}>
-                      #{index + 1}
-                    </Badge>
-                    <div>
-                      <p className="font-medium">{agent.name}</p>
-                      <p className="text-sm text-muted-foreground">{agent.title}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-6">
-                    <div className="text-center">
-                      <p className="text-sm font-medium">{formatCurrency(agent.totalDealRevenue)}</p>
-                      <p className="text-xs text-muted-foreground">Revenue</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium">{agent.dealCount}</p>
-                      <p className="text-xs text-muted-foreground">{labels.deals}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium">{agent.clientCount}</p>
-                      <p className="text-xs text-muted-foreground">Clients</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            {/* Insight Cards */}
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Pre-Built Insights</h2>
+              <InsightCards />
             </div>
-          </CardContent>
-        </Card>
+          </TabsContent>
+
+          {/* Network Tab */}
+          <TabsContent value="network" className="space-y-6">
+            <NetworkGraph />
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   )

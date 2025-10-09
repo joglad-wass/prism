@@ -247,31 +247,31 @@ export function DealTimeline({ deal, onNavigateToSchedule }: DealTimelineProps) 
   // Define the deal stages in order
   const allStages: Omit<StageInfo, 'isCurrent' | 'isCompleted' | 'date' | 'daysInStage'>[] = [
     {
-      key: 'INITIAL_OUTREACH',
+      key: 'Initial Outreach',
       name: 'Initial Outreach',
       description: 'First contact made with prospect',
       order: 0,
     },
     {
-      key: 'NEGOTIATION',
+      key: 'Negotiation',
       name: 'Negotiation',
       description: 'Contract terms and pricing negotiation',
       order: 1,
     },
     {
-      key: 'TERMS_AGREED_UPON',
+      key: 'Terms Agreed Upon',
       name: 'Terms Agreed Upon',
       description: 'Terms finalized and agreed by both parties',
       order: 2,
     },
     {
-      key: 'CLOSED_WON',
+      key: 'Closed Won',
       name: 'Closed Won',
       description: 'Deal successfully closed',
       order: 3,
     },
     {
-      key: 'CLOSED_LOST',
+      key: 'Closed Lost',
       name: 'Closed Lost',
       description: 'Deal lost or cancelled',
       order: 3,
@@ -280,18 +280,18 @@ export function DealTimeline({ deal, onNavigateToSchedule }: DealTimelineProps) 
 
   // Find current stage order
   const currentStageOrder = allStages.find(s => s.key === deal.StageName)?.order || 0
-  const isClosedWon = deal.StageName === 'CLOSED_WON'
-  const isClosedLost = deal.StageName === 'CLOSED_LOST'
+  const isClosedWon = deal.StageName === 'Closed Won'
+  const isClosedLost = deal.StageName === 'Closed Lost'
   const daysInCurrentStage = calculateDaysInStage()
 
   // Create timeline with stage information
   const timeline: StageInfo[] = allStages
     .filter(stage => {
       // Always show Closed Won, only show Closed Lost if it's the current stage
-      if (stage.key === 'CLOSED_WON') {
+      if (stage.key === 'Closed Won') {
         return true
       }
-      if (stage.key === 'CLOSED_LOST') {
+      if (stage.key === 'Closed Lost') {
         return stage.key === deal.StageName
       }
       return stage.order <= Math.max(currentStageOrder, 2)
@@ -299,13 +299,13 @@ export function DealTimeline({ deal, onNavigateToSchedule }: DealTimelineProps) 
     .map(stage => ({
       ...stage,
       isCurrent: stage.order === currentStageOrder,
-      isCompleted: stage.order < currentStageOrder || (isClosedWon && stage.key !== 'CLOSED_LOST'),
+      isCompleted: stage.order < currentStageOrder || (isClosedWon && stage.key !== 'Closed Lost'),
       date: stage.key === deal.StageName ? deal.Stage_Last_Updated__c : undefined,
       daysInStage: stage.key === deal.StageName ? daysInCurrentStage : undefined,
     }))
 
   const getStageIcon = (stage: StageInfo) => {
-    if (stage.key === 'INITIAL_OUTREACH') {
+    if (stage.key === 'Initial Outreach') {
       if (stage.isCompleted) {
         return <MessageCircle className="h-5 w-5 text-green-600 fill-current" />
       } else if (stage.isCurrent) {
@@ -324,8 +324,8 @@ export function DealTimeline({ deal, onNavigateToSchedule }: DealTimelineProps) 
   }
 
   const getStageVariant = (stage: StageInfo) => {
-    if (stage.key === 'CLOSED_WON') return 'default'
-    if (stage.key === 'CLOSED_LOST') return 'destructive'
+    if (stage.key === 'Closed Won') return 'default'
+    if (stage.key === 'Closed Lost') return 'destructive'
     if (stage.isCompleted) return 'secondary'
     if (stage.isCurrent) return 'outline'
     return 'secondary'
@@ -345,7 +345,7 @@ export function DealTimeline({ deal, onNavigateToSchedule }: DealTimelineProps) 
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <Badge variant={getStageVariant(timeline.find(s => s.isCurrent) || timeline[0])}>
-                {deal.StageName}
+                {deal.StageName || 'N/A'}
               </Badge>
               <div className="text-sm text-muted-foreground">
                 {allStages.find(s => s.key === deal.StageName)?.description || 'In progress'}

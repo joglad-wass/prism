@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
@@ -15,6 +15,8 @@ import {
 import { Users, DollarSign, Briefcase, TrendingUp } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useLabels } from '../../hooks/useLabels'
+import { BrandTalentTableView } from './brand-talent-table-view'
+import { ViewToggle } from '../talent/view-toggle'
 
 import { Brand } from '../../types'
 
@@ -36,6 +38,20 @@ export function BrandTalent({ brand }: BrandTalentProps) {
   const { labels } = useLabels()
   const router = useRouter()
   const [selectedTalent, setSelectedTalent] = useState<any>(null)
+
+  // Initialize view from localStorage
+  const [view, setView] = useState<'modular' | 'table'>(() => {
+    if (typeof window !== 'undefined') {
+      const savedView = localStorage.getItem('brand-talent-view-preference')
+      return (savedView === 'table' ? 'table' : 'modular') as 'modular' | 'table'
+    }
+    return 'modular'
+  })
+
+  // Save view preference to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('brand-talent-view-preference', view)
+  }, [view])
 
   const formatCurrency = (amount?: number) => {
     if (!amount) return '$0'
@@ -73,59 +89,87 @@ export function BrandTalent({ brand }: BrandTalentProps) {
   }, 0)
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      {/* Left: Talent List */}
-      <Card className="lg:col-span-1">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Associated Talent
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {talentClients.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
-              <p>No talent associated with this brand</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {talentClients.map((talentClient) => (
-                <div
-                  key={talentClient.client.id}
-                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                    activeTalent?.client?.id === talentClient.client.id
-                      ? 'bg-primary/10 border-primary'
-                      : 'hover:bg-muted/50'
-                  }`}
-                  onClick={() => setSelectedTalent(talentClient)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="font-medium">{talentClient.client.Name}</div>
-                      {talentClient.client.Client_Category__c && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {talentClient.client.Client_Category__c}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Briefcase className="h-3 w-3" />
-                          {talentClient.dealCount} {talentClient.dealCount === 1 ? labels.deal.toLowerCase() : labels.deals.toLowerCase()}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
-                          {formatCurrency(talentClient.totalRevenue)}
+    <div className="space-y-4">
+      <div className="flex items-center justify-end">
+        <ViewToggle view={view} onViewChange={setView} />
+      </div>
+
+      {view === 'table' ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Associated Talent ({talentClients.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {talentClients.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p>No talent associated with this brand</p>
+              </div>
+            ) : (
+              <BrandTalentTableView
+                talentClients={talentClients}
+                formatCurrency={formatCurrency}
+              />
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Left: Talent List */}
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Associated Talent
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {talentClients.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p>No talent associated with this brand</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {talentClients.map((talentClient) => (
+                    <div
+                      key={talentClient.client.id}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        activeTalent?.client?.id === talentClient.client.id
+                          ? 'bg-primary/10 border-primary'
+                          : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => setSelectedTalent(talentClient)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium">{talentClient.client.Name}</div>
+                          {talentClient.client.Client_Category__c && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {talentClient.client.Client_Category__c}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Briefcase className="h-3 w-3" />
+                              {talentClient.dealCount} {talentClient.dealCount === 1 ? labels.deal.toLowerCase() : labels.deals.toLowerCase()}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <DollarSign className="h-3 w-3" />
+                              {formatCurrency(talentClient.totalRevenue)}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              )}
+            </CardContent>
+          </Card>
 
       {/* Right: Talent Details & Deals */}
       <Card className="lg:col-span-2">
@@ -221,6 +265,8 @@ export function BrandTalent({ brand }: BrandTalentProps) {
           )}
         </CardContent>
       </Card>
+        </div>
+      )}
     </div>
   )
 }

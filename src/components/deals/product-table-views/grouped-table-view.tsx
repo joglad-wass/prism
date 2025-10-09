@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '../../ui/table'
-import { ChevronDown, ChevronRight, DollarSign, Calendar, Receipt, Users, Package, Edit } from 'lucide-react'
+import { ChevronDown, ChevronRight, DollarSign, Calendar, Receipt, Users, Package, Edit, Trash2 } from 'lucide-react'
 import { Product, Schedule } from '../../../types'
 import { ScheduleQuickView } from '../schedule-quick-view'
 
@@ -22,7 +22,9 @@ interface GroupedTableViewProps {
   getPaymentStatus: (schedule: any) => { label: string; variant: 'default' | 'secondary' | 'outline'; className: string }
   calculateSplitPercentage: (wassermanAmount?: number, revenue?: number) => number
   onEditSchedule?: (schedule: Schedule) => void
+  onDeleteSchedule?: (schedule: Schedule) => void
   onEditProduct?: (product: Product) => void
+  onDeleteProduct?: (product: Product) => void
   onNavigateToPayment?: (paymentId: string) => void
   getNumericValue: (value?: number | string | null) => number
 }
@@ -34,7 +36,9 @@ export function GroupedTableView({
   getPaymentStatus,
   calculateSplitPercentage,
   onEditSchedule,
+  onDeleteSchedule,
   onEditProduct,
+  onDeleteProduct,
   onNavigateToPayment,
   getNumericValue,
 }: GroupedTableViewProps) {
@@ -152,19 +156,34 @@ export function GroupedTableView({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {onEditProduct && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onEditProduct(product)
-                          }}
-                          className="h-7 w-7 p-0"
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                      )}
+                      <div className="flex items-center justify-end gap-1">
+                        {onEditProduct && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onEditProduct(product)
+                            }}
+                            className="h-7 w-7 p-0"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {onDeleteProduct && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onDeleteProduct(product)
+                            }}
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
 
@@ -231,7 +250,36 @@ export function GroupedTableView({
                             </div>
                           )}
                         </TableCell>
-                        <TableCell></TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            {onEditSchedule && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onEditSchedule(schedule)
+                                }}
+                                className="h-7 w-7 p-0"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            )}
+                            {onDeleteSchedule && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onDeleteSchedule(schedule)
+                                }}
+                                className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
                       </TableRow>
                     )
                   })}

@@ -25,12 +25,14 @@ import { BrandFilters, Brand } from '../../types'
 import { BrandListPanel } from '../../components/brand/brand-list-panel'
 import { BrandDetailsPanel } from '../../components/brand/brand-details-panel'
 import { BrandTableView } from '../../components/brand/brand-table-view'
+import { CreateBrandDialog } from '../../components/brand/create-brand-dialog'
 import { ViewToggle } from '../../components/talent/view-toggle'
 import { Search, Plus, Building2, DollarSign, TrendingUp, Loader2 } from 'lucide-react'
 
 export default function BrandsPage() {
   const [filters, setFilters] = useState<Omit<BrandFilters, 'page' | 'limit'>>({})
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   // Initialize view from localStorage
   const [view, setView] = useState<'modular' | 'table'>(() => {
@@ -205,7 +207,7 @@ export default function BrandsPage() {
               Manage your brand partnerships and client relationships
             </p>
           </div>
-          <Button>
+          <Button onClick={() => setCreateDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Add Brand
           </Button>
@@ -422,6 +424,12 @@ export default function BrandsPage() {
           </div>
         )}
       </div>
+
+      {/* Create Brand Dialog */}
+      <CreateBrandDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+      />
     </AppLayout>
   )
 }

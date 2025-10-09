@@ -177,10 +177,22 @@ export function ScheduleQuickView({
           {schedule.paymentRemittance?.payment && (
             <>
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Payment Details
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Payment Details
+                  </h3>
+                  {onViewPayment && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => onViewPayment(schedule.paymentRemittance.payment.id)}
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-sm text-muted-foreground mb-1">Payment Number</div>
@@ -207,17 +219,6 @@ export function ScheduleQuickView({
                     </Badge>
                   </div>
                 </div>
-                {onViewPayment && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => onViewPayment(schedule.paymentRemittance.payment.id)}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    View Full Payment Details
-                  </Button>
-                )}
               </div>
               <Separator />
             </>

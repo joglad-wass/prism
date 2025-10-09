@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '../../ui/table'
-import { DollarSign, Calendar, Receipt, Users, Package, Edit } from 'lucide-react'
+import { DollarSign, Calendar, Receipt, Users, Package, Edit, Trash2 } from 'lucide-react'
 import { Product, Schedule } from '../../../types'
 import { ScheduleQuickView } from '../schedule-quick-view'
 
@@ -23,7 +23,9 @@ interface CompactRowsViewProps {
   getPaymentStatus: (schedule: any) => { label: string; variant: 'default' | 'secondary' | 'outline'; className: string }
   calculateSplitPercentage: (wassermanAmount?: number, revenue?: number) => number
   onEditSchedule?: (schedule: Schedule) => void
+  onDeleteSchedule?: (schedule: Schedule) => void
   onEditProduct?: (product: Product) => void
+  onDeleteProduct?: (product: Product) => void
   onNavigateToPayment?: (paymentId: string) => void
   getNumericValue: (value?: number | string | null) => number
 }
@@ -35,7 +37,9 @@ export function CompactRowsView({
   getPaymentStatus,
   calculateSplitPercentage,
   onEditSchedule,
+  onDeleteSchedule,
   onEditProduct,
+  onDeleteProduct,
   onNavigateToPayment,
   getNumericValue,
 }: CompactRowsViewProps) {
@@ -114,6 +118,19 @@ export function CompactRowsView({
                         <Edit className="h-3 w-3" />
                       </Button>
                     )}
+                    {onDeleteProduct && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDeleteProduct(product)
+                        }}
+                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -130,6 +147,7 @@ export function CompactRowsView({
                           <TableHead className="h-8 text-xs text-right">Split %</TableHead>
                           <TableHead className="h-8 text-xs">Status</TableHead>
                           <TableHead className="h-8 text-xs text-right">Agents</TableHead>
+                          <TableHead className="h-8 text-xs w-[60px]"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -189,6 +207,36 @@ export function CompactRowsView({
                                     {schedule.agentSplits.length}
                                   </div>
                                 )}
+                              </TableCell>
+                              <TableCell className="py-2">
+                                <div className="flex items-center justify-end gap-1">
+                                  {onEditSchedule && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        onEditSchedule(schedule)
+                                      }}
+                                      className="h-7 w-7 p-0"
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                  {onDeleteSchedule && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        onDeleteSchedule(schedule)
+                                      }}
+                                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
                               </TableCell>
                             </TableRow>
                           )

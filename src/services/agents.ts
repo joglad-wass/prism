@@ -59,4 +59,9 @@ export class AgentService {
   static async deleteAgent(id: string): Promise<void> {
     await api.delete(`/agents/${id}`)
   }
+
+  static async getAgentAssociations(id: string): Promise<{ hasAssociations: boolean; dealCount: number; brandCount: number; clientCount: number }> {
+    const response = await api.get(`/agents/${id}/associations`)
+    return response.data.data
+  }
 }

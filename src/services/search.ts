@@ -107,13 +107,71 @@ export class SearchService {
     }
 
     const response = await api.get(`/search/suggestions?${params.toString()}`)
+    const data = response.data?.data || response.data
 
-    // If suggestions return the same format as global search, process them similarly
-    if (response.data?.data) {
-      const { data } = response.data
+    // If data is already an array (flat format from suggestions endpoint)
+    if (Array.isArray(data)) {
       const results: SearchResult[] = []
 
-      // Process using the same logic as globalSearch
+      data.forEach((item: any) => {
+        if (item.type === 'talent') {
+          results.push({
+            id: item.id,
+            type: 'talent',
+            title: item.Name,
+            subtitle: item.location || item.sport,
+            category: item.category,
+            sport: item.sport,
+            team: item.team,
+            status: item.status,
+            agents: item.agents,
+          })
+        } else if (item.type === 'brand') {
+          results.push({
+            id: item.id,
+            type: 'brand',
+            title: item.name,
+            subtitle: item.industry,
+            category: item.type,
+            industry: item.industry,
+            status: item.status,
+            owner: item.owner,
+          })
+        } else if (item.type === 'agent') {
+          results.push({
+            id: item.id,
+            type: 'agent',
+            title: item.name,
+            subtitle: item.email,
+            category: item.title || 'Agent',
+            email: item.email,
+            company: item.company,
+            division: item.division,
+            jobTitle: item.title,
+          })
+        } else if (item.type === 'deal') {
+          results.push({
+            id: item.id,
+            type: 'deal',
+            title: item.Name,
+            subtitle: item.brand?.name || 'Deal',
+            category: item.Status__c,
+            status: item.Status__c,
+            stage: item.StageName,
+            amount: item.Amount,
+            brand: item.brand,
+            owner: item.owner,
+          })
+        }
+      })
+
+      return results
+    }
+
+    // Fallback for nested format (talents, brands, agents, deals)
+    if (data && typeof data === 'object') {
+      const results: SearchResult[] = []
+
       if (data.talents) {
         data.talents.forEach((talent: any) => {
           results.push({
@@ -181,7 +239,6 @@ export class SearchService {
       return results
     }
 
-    // Fallback if response.data is already an array
-    return Array.isArray(response.data) ? response.data : []
+    return []
   }
 }

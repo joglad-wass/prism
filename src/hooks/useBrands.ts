@@ -1,4 +1,5 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
 import { BrandService } from '../services/brands'
 import { Brand, BrandFilters } from '../types'
 
@@ -107,5 +108,31 @@ export function useDeleteBrand() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: brandKeys.lists() })
     },
+  })
+}
+
+// Brand search hook with debouncing
+export function useBrandSearch(searchTerm: string, limit: number = 20) {
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  return useQuery({
+    queryKey: brandKeys.list({
+      search: debouncedSearch || undefined,
+      limit
+    }),
+    queryFn: () => BrandService.getBrands({
+      search: debouncedSearch || undefined,
+      limit
+    }),
+    enabled: true, // Always enabled to show initial results
+    staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }

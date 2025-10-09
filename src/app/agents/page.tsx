@@ -19,15 +19,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../components/ui/select'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../../components/ui/tooltip'
 import { useAgents } from '../../hooks/useAgents'
 import { AgentFilters } from '../../types'
 import { useFilter } from '../../contexts/filter-context'
 import { AgentListPanel } from '../../components/agent/agent-list-panel'
 import { AgentDetailsPanel } from '../../components/agent/agent-details-panel'
 import { AgentTableView } from '../../components/agent/agent-table-view'
+import { CreateAgentDialog } from '../../components/agent/create-agent-dialog'
 import { ViewToggle } from '../../components/talent/view-toggle'
 import { useLabels } from '../../hooks/useLabels'
 import { Search, Plus, UserCheck, Users, Award, Loader2 } from 'lucide-react'
+
+// MANUAL FLAG: Set to true to disable agent creation
+const DISABLE_AGENT_CREATION = true
 
 export default function AgentsPage() {
   const { labels } = useLabels()
@@ -37,6 +47,7 @@ export default function AgentsPage() {
     page: 1,
   })
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   // Initialize view from localStorage
   const [view, setView] = useState<'modular' | 'table'>(() => {
@@ -164,10 +175,28 @@ export default function AgentsPage() {
               Manage your team performance and client portfolios
             </p>
           </div>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add {labels.agent}
-          </Button>
+          {DISABLE_AGENT_CREATION ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button disabled className="pointer-events-none">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add {labels.agent}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>You do not have permission to create {labels.agents.toLowerCase()}.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add {labels.agent}
+            </Button>
+          )}
         </div>
 
         {/* Stats */}
@@ -421,6 +450,12 @@ export default function AgentsPage() {
           </div>
         )}
       </div>
+
+      {/* Create Agent Dialog */}
+      <CreateAgentDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+      />
     </AppLayout>
   )
 }
